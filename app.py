@@ -19,7 +19,6 @@ from pathlib import Path
 
 import database
 import discogs
-import vision
 
 # Load environment variables
 load_dotenv()
@@ -371,8 +370,8 @@ def add_photo():
     except Exception as e:
         return jsonify({'error': f'File save failed: {str(e)}'}), 500
 
-    # Identify with Claude Vision
-    identification = vision.identify_record_from_image(temp_path)
+    # Vision identification not available
+    identification = None
 
     unknown = {'', 'unknown', 'unknown artist', 'unknown album'}
     if (not identification
@@ -505,7 +504,7 @@ def add_save():
                 # Process: auto-rotate, remove background, square crop
                 with open(temp_path, 'rb') as f:
                     raw = f.read()
-                processed = vision.process_cover_photo(raw)
+                processed = raw  # vision processing not available; use raw photo
                 with open(final_path, 'wb') as f:
                     f.write(processed)
                 os.remove(temp_path)
