@@ -2449,6 +2449,8 @@ def generate_phone_pdf_covers():
         from PIL import Image as PILImage
         import io
 
+        from reportlab.lib.utils import ImageReader
+
         class LinkedImage(Flowable):
             """Image that opens a URL when clicked in a PDF reader."""
             def __init__(self, img_buf, width, height, url=None):
@@ -2458,10 +2460,8 @@ def generate_phone_pdf_covers():
                 self.height = height
                 self.url = url
             def draw(self):
-                self.canv.drawImage(
-                    RLImage(self.img_buf, width=self.width, height=self.height)._img,
-                    0, 0, self.width, self.height
-                )
+                self.img_buf.seek(0)
+                self.canv.drawImage(ImageReader(self.img_buf), 0, 0, self.width, self.height)
                 if self.url:
                     self.canv.linkURL(self.url, (0, 0, self.width, self.height), relative=1)
 
