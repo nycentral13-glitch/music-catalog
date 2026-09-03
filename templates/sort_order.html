@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Pricing - Music-Catalog{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <a href="{{ url_for('index') }}" class="text-blue-400 hover:text-blue-300 mb-4 inline-block">← Back</a>
+    <h1 class="text-4xl font-bold">Pricing</h1>
+    <p class="text-slate-400">Records needing Discogs price data</p>
+</div>
+
+<p id="unpriced-hint" class="text-slate-500 text-xs mb-4 hidden"></p>
+
+
+<details class="bg-slate-800 rounded-lg p-6 max-w-4xl mb-8 border border-slate-600 cursor-pointer">
+    <summary class="text-slate-400 text-sm font-medium select-none">Individual tools (advanced)</summary>
+    <div class="mt-4 space-y-4">
+        <div>
+            <p class="text-slate-300 text-sm mb-2">Fetch marketplace prices only (skips sort fix).</p>
+            <button onclick="fetchPrices()" id="prices-btn"
+                class="px-4 py-1.5 bg-green-700 text-white rounded hover:bg-green-600 transition text-sm">
+                💰 Fetch Prices Only
+            </button>
+            <div id="prices-result" class="mt-2 text-xs text-slate-400"></div>
+        </div>
+        <div>
+            <p class="text-slate-300 text-sm mb-2">Fix artist sort names only (skips price fetch).</p>
+            <button onclick="fixArtistData()" id="fix-btn"
+                class="px-4 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 transition text-sm">
+                🔧 Fix Artist Data Only
+            </button>
+            <div id="fix-result" class="mt-2 text-xs text-slate-400"></div>
+        </div>
+    </div>
+</details>
+
+<!-- Results -->
+<div id="results" class="hidden">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="text-2xl font-bold mb-2" id="results-heading">Sort Order Plan</h2>
+            <p class="text-slate-400" id="results-subtitle">
+                <span id="result-count">0</span> records sorted across
+                <span id="shelf-count">0</span> shelves
+            </p>
+        </div>
+        <button
+            onclick="window.print()"
+            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+        >
+            🖨️ Print Guide
+        </button>
+    </div>
+
+    <div class="bg-slate-800 rounded-lg overflow-hidden">
+        <table class="w-full text-sm" id="results-table">
+            <thead class="bg-slate-900 border-b border-slate-700 sticky top-0">
+                <tr>
+                    <th class="px-4 py-3 text-left font-medium text-slate-300">#</th>
+                    <th class="px-4 py-3 text-left font-medium text-slate-300">Target Shelf</th>
+                    <th class="px-4 py-3 text-left font-medium text-slate-300">Artist</th>
+                    <th class="px-4 py-3 text-left font-medium text-slate-300">Title</th>
+                    <th class="px-4 py-3 text-left font-medium text-slate-300">Format</th>
+                    <th class="px-4 py-3 text-left font-medium text-slate-300">Current Shelf</th>
+                </tr>
+            </thead>
+            <tbody id="table-body" class="divide-y divide-slate-700">
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-6 p-4 bg-slate-700 rounded-lg text-sm text-slate-300">
+        <p class="font-medium mb-2">📋 How to use this guide:</p>
+        <ol class="list-decimal list-inside space-y-1 text-slate-400">
+            <li>Find each record by its number in the "Target Shelf" column</li>
+            <li>Place it on the indicated shelf in numerical order</li>
+            <li>This creates an alphabetical, sortable collection</li>
+            <li>Update the "Current Shelf" column as you organize</li>
+        </ol>
+    </div>
+</div>
+
+<script>
+// ── Prices only ───────────────────────────────────────────────────────────
+let pricesTotalDone = 0;
+
+async function fetchPrices() {
+    const btn = document.getElementById('prices-btn');
+    const resultDiv = document.getElementById('prices-result');
+    btn.disabled = true;
+
+    async function runBatch() {
+        btn.textContent = '⏳ Fetching...';
+        try {
+            const res = await fetch('/admin/fetch-prices', { method: 'POST' });
+            const data = await res.json();
+            pricesTotalDone += data.batch_size;
+            resultDiv.innerHTML = `
+                <p class="text-blue-300">Batch done: ${data.fetched} fetched, ${data.no_listing} no listing, ${data.errors} errors</p>
+                <p class="text-slate-400 mt-1">Total processed so far: ${pricesTotalDone} &nbsp;|&nbsp; Remaining: ${data.remaining}</p>
+            `;
+            if (!data.done) {
+                setTimeout(runBatch, 500);
+            } else {
+                btn.disabled = false;
+                btn.textContent = '💰 Fetch Marketplace Prices';
+                resultDiv.innerHTML += `<p class="text-green-400 mt-2 font-medium">✓ All records complete!</p>`;
+            }
+        } catch (err) {
+            resultDiv.innerHTML = `<p class="text-red-400">Error: ${err.message}</p>`;
+            btn.disabled = false;
+            btn.textContent = '💰 Fetch Marketplace Prices';
+        }
+    }
+
+    pricesTotalDone = 0;
+    runBatch();
+}
+
+async function fixArtistData() {
+    const btn = document.getElementById('fix-btn');
+    const resultDiv = document.getElementById('fix-result');
+    btn.disabled = true;
+    btn.textContent = '⏳ Running... (this may take a minute)';
+    resultDiv.innerHTML = '';
+
+    try {
+        const res = await fetch('/admin/fix-artist-data', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            resultDiv.innerHTML = `<p class="text-green-400">${data.message}</p>
+                ${data.artist_sort_needs_manual_review > 0
+                    ? `<p class="text-amber-400 mt-1">${data.artist_sort_needs_manual_review} records could not be auto-fixed — edit those individually via the record page.</p>`
+                    : ''}`;
+        } else {
+            resultDiv.innerHTML = `<p class="text-red-400">Error: ${data.error}</p>`;
+        }
+    } catch (err) {
+        resultDiv.innerHTML = `<p class="text-red-400">Error: ${err.message}</p>`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = '🔧 Fix Artist Data';
+}
+
+async function generateSortOrder() {
+    const btn = document.getElementById('generate-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating...';
+
+    try {
+        const res = await fetch('/sort-order/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            document.getElementById('results-heading').textContent = 'Sort Order Plan';
+            // Build per-shelf count summary
+            const shelfSummary = Object.entries(data.shelf_counts || {})
+                .sort((a, b) => parseInt(a[0].replace('Shelf ','')) - parseInt(b[0].replace('Shelf ','')))
+                .map(([shelf, count]) => `<span class="text-slate-300">${shelf}:</span> ${count}`)
+                .join(' &nbsp;|&nbsp; ');
+            document.getElementById('results-subtitle').innerHTML =
+                `<span class="text-white font-medium">${data.total}</span> records across ` +
+                `<span class="text-white font-medium">${data.shelves}</span> shelves &nbsp;` +
+                `<span class="text-amber-300 text-xs">(Children&#39;s/Classical/Jazz on shelves 14–16)</span><br>` +
+                `<span class="text-xs text-slate-400 mt-1 block">${shelfSummary}</span>`;
+            displayResults(data);
+            document.getElementById('results').classList.remove('hidden');
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🎯 Generate Sort Order';
+    }
+}
+
+async function generateUnpriced() {
+    const hint = document.getElementById('unpriced-hint');
+
+    try {
+        const res = await fetch('/sort-order/generate-unpriced', { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok) {
+            if (data.total === 0) {
+                hint.textContent = '✓ All records have pricing data — nothing left to fetch.';
+                hint.classList.remove('hidden');
+                hint.classList.add('text-green-400');
+            } else {
+                hint.textContent = `${data.total} records with no pricing data yet.`;
+                hint.classList.remove('hidden', 'text-green-400');
+                hint.classList.add('text-amber-400');
+                document.getElementById('results-heading').textContent = 'Records Needing Prices';
+                document.getElementById('results-subtitle').innerHTML =
+                    `<span class="text-amber-300">${data.total} records</span> have no pricing data yet · ` +
+                    `current shelf shown for reference`;
+                displayResults(data);
+                document.getElementById('results').classList.remove('hidden');
+            }
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+function displayResults(data) {
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '';
+
+    data.data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-700 hover:bg-slate-700 transition';
+        const fmtColor = row.format === 'Double LP' ? 'text-amber-400' :
+                         row.format === 'Box Set'   ? 'text-purple-400' : 'text-slate-500';
+        const titleCell = row.id
+            ? `<a href="/record/${row.id}" class="text-blue-400 hover:text-blue-300 hover:underline">${escapeHtml(row.title)}</a>`
+            : escapeHtml(row.title);
+        tr.innerHTML = `
+            <td class="px-4 py-3 font-mono text-blue-400 font-medium">${row.sort_num}</td>
+            <td class="px-4 py-3 font-medium text-green-400">${row.shelf}</td>
+            <td class="px-4 py-3 text-slate-200">${escapeHtml(row.artist_sort)}</td>
+            <td class="px-4 py-3 text-slate-300">${titleCell}</td>
+            <td class="px-4 py-3 text-xs ${fmtColor}">${escapeHtml(row.format || '')}</td>
+            <td class="px-4 py-3 text-slate-400">${escapeHtml(row.current_shelf)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Auto-load on page open
+document.addEventListener('DOMContentLoaded', generateUnpriced);
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+</script>
+
+<style>
+@media print {
+    nav, #generate-btn, button {
+        display: none !important;
+    }
+
+    body {
+        background: white;
+        color: black;
+    }
+
+    .bg-slate-800, .bg-slate-900 {
+        background: white;
+        border: 1px solid #ddd;
+    }
+
+    .text-slate-300, .text-slate-400, .text-slate-400 {
+        color: black;
+    }
+
+    table {
+        page-break-inside: avoid;
+    }
+
+    tr {
+        page-break-inside: avoid;
+    }
+
+    .text-blue-400 {
+        color: #0066cc;
+    }
+
+    .text-green-400 {
+        color: #008000;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,27 @@
+# Secrets & personal data — never commit these
+.env
+collection.db
+covers/
+
+# Generated outputs
+flask.log
+*.log
+library-app.html
+phone-list.html
+phone-list.pdf
+phone-list-covers.pdf
+apple-touch-icon.png
+
+# Build artifacts & old zips
+*.zip
+*.bak
+*.bak-*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# macOS
+.DS_Store

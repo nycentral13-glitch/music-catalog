@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Duplicate Records - Music-Catalog{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <a href="{{ url_for('index') }}" class="text-blue-400 hover:text-blue-300 mb-4 inline-block">← Back</a>
+    <h1 class="text-4xl font-bold">Duplicate Records</h1>
+    <p class="text-slate-400">{{ records|length }} duplicate(s) to manage</p>
+</div>
+
+{% if records %}
+<div class="space-y-6">
+    {% for record in records %}
+    <div class="bg-slate-800 rounded-lg p-6 border-l-4 border-red-600">
+        <div class="flex flex-col md:flex-row gap-6 mb-4">
+            <!-- Cover -->
+            <div class="w-full md:w-32 h-32 bg-slate-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
+                {% if record.cover_art_path %}
+                <img
+                    src="{{ url_for('serve_cover', filename=record.cover_art_path.split('/')[-1]) }}"
+                    alt="{{ record.artist }} - {{ record.title }}"
+                    class="w-full h-full object-cover"
+                >
+                {% else %}
+                <div class="text-4xl">🎵</div>
+                {% endif %}
+            </div>
+
+            <!-- Details -->
+            <div class="flex-1">
+                <h3 class="text-xl font-bold mb-1">{{ record.artist }}</h3>
+                <p class="text-slate-300 mb-3">{{ record.title }}</p>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-4">
+                    {% if record.year %}
+                    <div>
+                        <p class="text-slate-400 text-xs">Year</p>
+                        <p>{{ record.year }}</p>
+                    </div>
+                    {% endif %}
+                    {% if record.format %}
+                    <div>
+                        <p class="text-slate-400 text-xs">Format</p>
+                        <p>{{ record.format }}</p>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <p class="text-slate-400 text-xs">Marked</p>
+                        <p>{{ record.date_added[:10] }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resolution Options -->
+        <div class="bg-slate-700 rounded-lg p-4 mb-4">
+            <p class="text-sm text-slate-300 mb-3">What would you like to do?</p>
+            <form method="POST" action="{{ url_for('resolve_duplicate', record_id=record.id) }}" class="flex flex-wrap gap-2">
+                <button
+                    type="submit"
+                    name="action"
+                    value="keep"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+                >
+                    ✓ This is a Different Pressing
+                </button>
+                <button
+                    type="submit"
+                    name="action"
+                    value="delete"
+                    onclick="return confirm('Delete this duplicate record?')"
+                    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+                >
+                    🗑️ Delete This Copy
+                </button>
+                <a
+                    href="{{ url_for('view_record', record_id=record.id) }}"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+                >
+                    👁️ View Details
+                </a>
+            </form>
+        </div>
+
+        {% if record.duplicate_of %}
+        <p class="text-xs text-slate-400">
+            Marked as duplicate of record #{{ record.duplicate_of }}
+        </p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-16 bg-slate-800 rounded-lg">
+    <p class="text-slate-400 text-lg mb-4">No duplicate records</p>
+    <a href="{{ url_for('index') }}" class="text-blue-400 hover:text-blue-300">Back to collection</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,819 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Collection - Music-Catalog{% endblock %}
+
+{% block content %}
+<!-- Search and Filter -->
+<div class="bg-slate-800 rounded-lg p-4 mb-8 space-y-2">
+    <div class="flex items-baseline justify-between mb-1">
+        <p class="text-slate-400 text-xs">
+            {{ stats.total }} records
+            {% if stats.with_covers %} &nbsp;·&nbsp; {{ stats.cover_percentage }}% with covers{% endif %}
+            {% if stats.total_low %} &nbsp;·&nbsp; <span class="text-green-400 font-medium">${{ "{:,.0f}".format(stats.total_low) }}</span> <span class="text-slate-500">Discog Low Ask ({{ stats.priced_count }} priced)</span>{% endif %}
+        </p>
+    </div>
+    <div class="relative">
+        <input
+            type="text"
+            id="search"
+            placeholder="Search by artist, title, or label..."
+            class="w-full px-4 py-2 pr-8 bg-slate-700 text-white rounded-lg placeholder-slate-500 focus:ring-2 focus:ring-blue-500 text-sm"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+        >
+        <button id="search-clear" onclick="document.getElementById('search').value=''; document.getElementById('search').dispatchEvent(new Event('input')); this.style.display='none';" style="display:none; position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:#94a3b8; font-size:1rem; cursor:pointer; line-height:1; padding:0;">✕</button>
+    </div>
+
+    <!-- Row 1: Format filters -->
+    <div class="flex flex-wrap gap-1">
+        <button onclick="filterByFormat('all')" class="filter-btn px-2 py-1 rounded bg-blue-600 text-white text-xs font-medium transition" data-format="all">All</button>
+        <button onclick="filterByFormat('vinyl')" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition" data-format="vinyl">Vinyl</button>
+        <button onclick="filterByFormat('CD')" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition" data-format="CD">CD</button>
+        <button onclick="filterByFormat('45')" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition" data-format="45">7inch 45's</button>
+        <button onclick="filterByFormat('10 Inch')" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition" data-format="10 Inch">10inch</button>
+        {% for format in formats %}
+        {% if format not in ['LP', 'Double LP', 'EP', '12 Inch', '10 Inch', '7 Inch', 'CD', '45'] %}
+        <button onclick="filterByFormat('{{ format }}')" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition" data-format="{{ format }}">{{ format }}</button>
+        {% endif %}
+        {% endfor %}
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition" data-format="__dupes__">Dupes</button>
+    </div>
+
+    <!-- Row 2: Genre filters -->
+    <div class="flex flex-nowrap gap-1 overflow-x-auto pb-1">
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="rock">Rock</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="electronic">Electronic</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="pop">Pop</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="jazz">Jazz</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="classical">Classical</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="easy listening">Easy Listening</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="folk">Folk / World</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="funk">Funk / Soul</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="stage">Stage & Screen</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="hip hop">Hip Hop</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="blues">Blues</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="latin">Latin</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="reggae">Reggae</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="children">Children's</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="non-music">Non-Music</button>
+        <button onclick="filterByGenre(this)" class="filter-btn px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition whitespace-nowrap" data-format="__genre__" data-genre-match="other">Other</button>
+    </div>
+
+
+    <div class="flex items-center gap-2">
+        <label class="text-sm text-slate-300">Sort by:</label>
+        <select id="sort" class="px-3 py-2 bg-slate-700 text-white rounded-lg text-sm">
+            <option value="shelf">Shelf Order</option>
+            <option value="artist" selected>Artist</option>
+            <option value="title">Title</option>
+            <option value="year">Year</option>
+            <option value="date">Date Added</option>
+        </select>
+    </div>
+</div>
+
+<!-- Results + view toggle -->
+<div class="mb-4 flex items-center justify-between">
+    <p class="text-slate-400 text-sm">
+        Showing <span id="result-count">{{ records|length }}</span> records<span id="match-count"></span>
+    </p>
+    <div class="flex gap-1 bg-slate-800 rounded-lg p-1">
+        <button id="view-shelf-btn" onclick="setView('shelf')"
+                class="px-3 py-1 rounded text-xs font-medium transition bg-slate-600 text-white">
+            ⊞ Shelf
+        </button>
+        <button id="view-list-btn" onclick="setView('list')"
+                class="px-3 py-1 rounded text-xs font-medium transition text-slate-400 hover:text-white">
+            ☰ List
+        </button>
+    </div>
+</div>
+
+<!-- Shelf View (horizontal per-shelf rows) -->
+<div id="shelf-view" class="mb-8 space-y-6"></div>
+
+<!-- List/Table View -->
+<div id="list-view" class="mb-8 hidden">
+    <table class="w-full text-sm border-collapse">
+        <thead>
+            <tr class="border-b border-slate-700">
+                <th class="text-left py-2 px-3 text-slate-400 font-medium text-xs uppercase tracking-wide">Artist</th>
+                <th class="text-left py-2 px-3 text-slate-400 font-medium text-xs uppercase tracking-wide">Title</th>
+                <th class="text-left py-2 px-3 text-slate-400 font-medium text-xs uppercase tracking-wide w-24">Format</th>
+                <th class="text-left py-2 px-3 text-slate-400 font-medium text-xs uppercase tracking-wide w-16">Year</th>
+            </tr>
+        </thead>
+        <tbody id="list-body"></tbody>
+    </table>
+</div>
+
+<!-- Grid (hidden — shelf view is the only display) -->
+<div id="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8 hidden">
+    {% for record in records %}
+    <a
+        href="{{ url_for('view_record', record_id=record.id) }}"
+        class="group cursor-pointer record-item"
+        id="record-{{ record.id }}"
+        onclick="saveFilterState()"
+        data-artist="{{ record.artist.lower() }}"
+        data-artist-sort="{{ (record.artist_sort or record.artist).lower() }}"
+        data-title="{{ record.title.lower() }}"
+        data-label="{{ (record.label or '').lower() }}"
+        data-format="{{ record.format or '' }}"
+        data-genre="{{ record.genre or '' }}"
+        data-notes="{{ (record.notes or '').lower() }}"
+        data-is-dupe="{{ 'true' if record.notes and 'copies' in record.notes.lower() else 'false' }}"
+        data-year="{{ record.year or 0 }}"
+        data-date="{{ record.date_added or '' }}"
+        data-sort-order="{{ record.sort_order or 999999 }}"
+        data-shelf-num="{{ record.shelf_section.replace('Shelf ', '') if record.shelf_section else 999 }}"
+        data-record-id="{{ record.id }}"
+        {% set sp = shelf_positions.get(record.id) %}
+        data-shelf-display="{{ sp.shelf ~ ' · #' ~ sp.pos ~ ' of ' ~ sp.total if sp else '' }}"
+        data-price-low="{{ record.price_lowest or '' }}"
+        data-price-high="{{ record.price_highest or '' }}"
+    >
+        <div class="aspect-square bg-slate-800 rounded-lg overflow-hidden mb-3 relative">
+            {% if record.cover_art_path %}
+            <img
+                src="{{ url_for('serve_cover', filename=record.cover_art_path.split('/')[-1]) }}"
+                alt="{{ record.artist }} - {{ record.title }}"
+                class="w-full h-full object-cover group-hover:opacity-75 transition"
+                onclick="event.preventDefault(); event.stopPropagation(); openRecordLightbox(this.closest('.record-item'))"
+                style="cursor:zoom-in"
+            >
+            {% else %}
+            <div class="w-full h-full flex items-center justify-center bg-slate-700">
+                <span class="text-4xl">🎵</span>
+            </div>
+            {% endif %}
+
+            <!-- Badges -->
+            <div class="absolute top-2 right-2 flex gap-1">
+                {% if record.needs_review %}
+                <span class="bg-amber-600 text-xs px-2 py-1 rounded">Review</span>
+                {% endif %}
+                {% if record.duplicate_flag %}
+                <span class="bg-red-600 text-xs px-2 py-1 rounded">Duplicate</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div>
+            <p class="font-medium text-sm truncate group-hover:text-blue-400 transition">
+                {{ record.artist }}
+            </p>
+            {% if record.artist_sort %}
+            <p class="text-xs text-slate-600 truncate">
+                {{ record.artist_sort }}
+            </p>
+            {% endif %}
+            <p class="text-xs text-slate-400 truncate">
+                {{ record.title }}
+            </p>
+            {% if record.year %}
+            <p class="text-xs text-slate-500">
+                {{ record.year }}
+                {% if record.format %} • {{ record.format }}{% endif %}
+            </p>
+            {% endif %}
+            <div class="flex items-center justify-between gap-1 mt-0.5">
+                {% if record.price_lowest and record.price_lowest > 0 %}
+                <span class="text-xs text-green-500 font-mono">
+                    ${{ "%.0f"|format(record.price_lowest) }}{% if record.price_highest and record.price_highest > 0 %} – ${{ "%.0f"|format(record.price_highest) }}{% endif %}
+                </span>
+                {% else %}
+                <span></span>
+                {% endif %}
+                {% set sp = shelf_positions.get(record.id) %}
+                {% if sp %}
+                <span class="text-xs text-red-500 whitespace-nowrap">{{ sp.shelf }} #{{ sp.pos }}/{{ sp.total }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+
+{% if not records %}
+<div class="text-center py-16">
+    <p class="text-slate-400 text-lg mb-4">No records yet</p>
+    <a href="{{ url_for('add') }}" class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+        Add your first record
+    </a>
+</div>
+{% endif %}
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+
+<script>
+let allRecords = [];
+
+function renderShelfView() {
+    const sv = document.getElementById('shelf-view');
+    sv.innerHTML = '';
+
+    // Collect visible records from the grid, already sorted
+    const items = Array.from(document.querySelectorAll('.record-item'))
+        .filter(item => item.style.display !== 'none');
+
+    // Group by shelf number in order
+    const shelves = new Map();
+    items.forEach(item => {
+        const sn = item.dataset.shelfNum || '999';
+        if (!shelves.has(sn)) shelves.set(sn, []);
+        shelves.get(sn).push(item);
+    });
+
+    // Sort shelf keys numerically
+    const sortedShelves = [...shelves.keys()].sort((a, b) => parseInt(a) - parseInt(b));
+
+    const CARD_W = 126; // px per card + gap
+
+    sortedShelves.forEach(shelfNum => {
+        const records = shelves.get(shelfNum);
+        const label = shelfNum === '999' ? 'Your Collection' :
+                      shelfNum === '14'  ? 'Shelf 13 — Kids' :
+                      shelfNum === '15'  ? 'Shelf 13 — Jazz' :
+                      shelfNum === '16'  ? 'Shelf 13 — Classical' :
+                      shelfNum === '17'  ? 'Shelf 17 — 10 Inch' :
+                      shelfNum === '18'  ? 'Shelf 13 — Easy Listening' :
+                      shelfNum === '19'  ? 'Shelf 13 — Other' :
+                      `Shelf ${shelfNum}`;
+
+        const section = document.createElement('div');
+
+        // Header row with scroll buttons
+        const header = document.createElement('div');
+        header.className = 'flex items-center gap-3 mb-2';
+        header.innerHTML = `
+            <span class="text-sm font-semibold text-slate-300 whitespace-nowrap">${label}
+                <span class="text-slate-500 font-normal">(${records.length})</span>
+            </span>
+            <button onclick="scrollShelf('strip-${shelfNum}',-1)"
+                class="px-2 py-0.5 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-300">◀</button>
+            <button onclick="scrollShelf('strip-${shelfNum}', 1)"
+                class="px-2 py-0.5 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-300">▶</button>
+        `;
+
+        const strip = document.createElement('div');
+        strip.className = 'shelf-strip';
+        strip.id = `strip-${shelfNum}`;
+
+        records.forEach(item => {
+            const card = document.createElement('a');
+            card.className = 'shelf-card';
+            card.href = item.getAttribute('href');
+            card.onclick = item.onclick;
+            if (item.classList.contains('search-match'))   card.classList.add('search-match');
+            if (item.classList.contains('search-context')) card.classList.add('search-context');
+
+            // Cover image
+            const img = item.querySelector('img');
+            const coverHtml = img
+                ? `<img src="${img.src}" alt="">`
+                : `<div class="shelf-placeholder">🎵</div>`;
+
+            // Info from data attributes
+            const sp = item.querySelector('.text-red-500');
+            const posHtml = sp ? `<span class="shelf-pos">${sp.textContent}</span>` : '';
+            const priceLow  = item.dataset.priceLow;
+            const priceHigh = item.dataset.priceHigh;
+            const priceHtml = priceLow ? `<span class="shelf-price">$${Math.round(priceLow)}${priceHigh ? '–$' + Math.round(priceHigh) : ''}</span>` : '';
+
+            card.innerHTML = `
+                ${coverHtml}
+                <div class="shelf-info">
+                    <div class="shelf-artist truncate">${item.dataset.artist ? item.dataset.artist.replace(/\b\w/g,c=>c.toUpperCase()) : ''}</div>
+                    <div class="truncate">${item.dataset.title ? item.dataset.title.replace(/\b\w/g,c=>c.toUpperCase()) : ''}</div>
+                    ${posHtml}
+                    ${priceHtml}
+                </div>
+            `;
+            strip.appendChild(card);
+        });
+
+        section.appendChild(header);
+        section.appendChild(strip);
+        sv.appendChild(section);
+
+        // After render, scroll so first match is centered in the strip
+        const matchCards = strip.querySelectorAll('.search-match');
+        if (matchCards.length > 0) {
+            const firstMatch = matchCards[0];
+            const matchIndex = Array.from(strip.children).indexOf(firstMatch);
+            const CARD_W = 126;
+            const stripVisible = strip.clientWidth || 900;
+            const scrollTo = matchIndex * CARD_W - Math.floor(stripVisible / 2) + Math.floor(CARD_W / 2);
+            setTimeout(() => { strip.scrollLeft = Math.max(0, scrollTo); }, 0);
+        }
+    });
+}
+
+function scrollShelf(stripId, direction) {
+    const strip = document.getElementById(stripId);
+    if (strip) strip.scrollLeft += direction * (120 + 6) * 7;
+}
+
+function updateRecordLinks(browseParam) {
+    document.querySelectorAll('.record-item').forEach(item => {
+        const base = item.getAttribute('href').split('?')[0];
+        item.setAttribute('href', browseParam ? `${base}?browse=${encodeURIComponent(browseParam)}` : base);
+    });
+}
+
+let activeShelf = null;
+
+function setShelfBtnActive(btn) {
+    // Use inline style so it beats Tailwind hover classes regardless of cursor position
+    btn.style.backgroundColor = '#9333ea';
+    btn.style.color = '#ffffff';
+}
+function clearShelfBtnActive(btn) {
+    btn.style.backgroundColor = btn.dataset.defaultBg || '';
+    btn.style.color = btn.dataset.defaultColor || '';
+}
+
+function filterByShelf(btn) {
+    // Clear format/genre active state
+    document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white');
+        b.classList.add('bg-slate-700', 'text-slate-300');
+    });
+    const allBtn = document.querySelector('[data-format="all"]');
+    if (allBtn) allBtn.classList.remove('bg-blue-600');
+
+    const shelfNum = btn.dataset.shelf;
+    if (activeShelf === shelfNum) {
+        // Toggle off — reset to All
+        activeShelf = null;
+        clearShelfBtnActive(btn);
+        if (allBtn) { allBtn.classList.add('bg-blue-600', 'text-white'); }
+        updateRecordLinks('');
+    } else {
+        document.querySelectorAll('.shelf-btn').forEach(b => clearShelfBtnActive(b));
+        activeShelf = shelfNum;
+        setShelfBtnActive(btn);
+        updateRecordLinks(`shelf:${shelfNum}`);
+    }
+    document.getElementById('sort').value = 'shelf';
+    filterAndSort();
+}
+
+function filterByFormat(format) {
+    activeShelf = null;
+    document.querySelectorAll('.shelf-btn').forEach(b => clearShelfBtnActive(b));
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white');
+        btn.classList.add('bg-slate-700', 'text-slate-300');
+    });
+    document.querySelector(`[data-format="${format}"]`).classList.add('bg-blue-600', 'text-white');
+    document.querySelector(`[data-format="${format}"]`).classList.remove('bg-slate-700', 'text-slate-300');
+    updateRecordLinks(format === 'all' ? '' : `format:${format}`);
+    filterAndSort();
+}
+
+function filterByGenre(btn) {
+    activeShelf = null;
+    document.querySelectorAll('.shelf-btn').forEach(b => clearShelfBtnActive(b));
+    document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white');
+        b.classList.add('bg-slate-700', 'text-slate-300');
+    });
+    btn.classList.add('bg-blue-600', 'text-white');
+    btn.classList.remove('bg-slate-700', 'text-slate-300');
+    const param = btn.dataset.format === '__dupes__' ? 'dupes' : `genre:${btn.dataset.genreMatch}`;
+    updateRecordLinks(param);
+    filterAndSort();
+}
+
+function filterAndSort() {
+    const searchText = document.getElementById('search').value.toLowerCase();
+    const activeFilterBtn = document.querySelector('.filter-btn.bg-blue-600');
+    const selectedFormat = activeFilterBtn ? activeFilterBtn.dataset.format : 'all';
+    const sortBy = document.getElementById('sort').value;
+
+    const items = Array.from(document.querySelectorAll('.record-item'));
+    const genre_filter = document.querySelector('.filter-btn.bg-blue-600');
+    const genreMatch = genre_filter ? genre_filter.dataset.genreMatch : null;
+    const vinylFormats = ['LP', 'Double LP', 'EP', '12 Inch', '10 Inch'];
+
+    // --- Pass 1: find every item that matches the search term ---
+    const matchingShelves = new Set();
+    items.forEach(item => {
+        const artist    = item.dataset.artist;
+        const artistSort = item.dataset.artistSort;
+        const title     = item.dataset.title;
+        const label     = item.dataset.label;
+        const matchesSearch = !searchText ||
+            artist.includes(searchText) ||
+            artistSort.includes(searchText) ||
+            title.includes(searchText) ||
+            label.includes(searchText);
+        if (matchesSearch && item.dataset.shelfNum && item.dataset.shelfNum !== '999') {
+            matchingShelves.add(item.dataset.shelfNum);
+        }
+    });
+
+    // --- Pass 2: show/hide and highlight ---
+    let visibleCount = 0;
+    items.forEach(item => {
+        const artist     = item.dataset.artist;
+        const artistSort = item.dataset.artistSort;
+        const title      = item.dataset.title;
+        const label      = item.dataset.label;
+        const format     = item.dataset.format;
+        const genre      = item.dataset.genre || '';
+        const notes      = item.dataset.notes || '';
+
+        const matchesSearch = !searchText ||
+            artist.includes(searchText) ||
+            artistSort.includes(searchText) ||
+            title.includes(searchText) ||
+            label.includes(searchText);
+
+        // Format / genre / shelf filter
+        let matchesFormat;
+        if (activeShelf) {
+            matchesFormat = item.dataset.shelfNum === activeShelf;
+        } else if (selectedFormat === 'all') {
+            matchesFormat = true;
+        } else if (selectedFormat === '__dupes__') {
+            matchesFormat = item.dataset.isDupe === 'true';
+        } else if (selectedFormat === '__genre__') {
+            matchesFormat = genreMatch ? genre.toLowerCase().includes(genreMatch) : true;
+        } else if (selectedFormat === 'vinyl') {
+            matchesFormat = vinylFormats.includes(format);
+        } else {
+            matchesFormat = format === selectedFormat;
+        }
+
+        // When searching: show entire shelf of any match, highlight the match itself
+        let show;
+        if (searchText && matchingShelves.size > 0) {
+            const onMatchingShelf = matchingShelves.has(item.dataset.shelfNum);
+            show = onMatchingShelf && matchesFormat;
+            if (show) {
+                if (matchesSearch) {
+                    // Highlight: bright ring + slight background
+                    item.classList.add('search-match');
+                    item.classList.remove('search-context');
+                } else {
+                    // Dimmed shelf neighbour
+                    item.classList.add('search-context');
+                    item.classList.remove('search-match');
+                }
+            } else {
+                item.classList.remove('search-match', 'search-context');
+            }
+        } else {
+            show = matchesSearch && matchesFormat;
+            item.classList.remove('search-match', 'search-context');
+        }
+
+        if (show) {
+            item.style.display = '';
+            if (item.dataset.notes !== 'alpha-divider') visibleCount++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // --- Sort visible items ---
+    const grid = document.getElementById('grid');
+    const visibleItems = items.filter(item => item.style.display !== 'none');
+
+    visibleItems.sort((a, b) => {
+        if (sortBy === 'shelf') {
+            const aShelf = parseInt(a.dataset.shelfNum) || 999;
+            const bShelf = parseInt(b.dataset.shelfNum) || 999;
+            if (aShelf !== bShelf) return aShelf - bShelf;
+            return parseInt(a.dataset.sortOrder) - parseInt(b.dataset.sortOrder);
+        } else if (sortBy === 'artist') {
+            return a.dataset.artistSort.localeCompare(b.dataset.artistSort);
+        } else if (sortBy === 'title') {
+            return a.dataset.title.localeCompare(b.dataset.title);
+        } else if (sortBy === 'year') {
+            return parseInt(b.dataset.year) - parseInt(a.dataset.year);
+        } else if (sortBy === 'date') {
+            return new Date(b.dataset.date) - new Date(a.dataset.date);
+        }
+    });
+
+    visibleItems.forEach(item => grid.appendChild(item));
+
+    document.getElementById('result-count').textContent = visibleCount;
+
+    const matchEl = document.getElementById('match-count');
+    if (searchText) {
+        const matchCount = items.filter(i => i.classList.contains('search-match') && i.dataset.notes !== 'alpha-divider').length;
+        matchEl.textContent = ` · ${matchCount} matching`;
+        matchEl.style.color = '#a78bfa';
+    } else {
+        matchEl.textContent = '';
+    }
+
+    // Refresh shelf or list view
+    if (currentView === 'shelf') renderShelfView();
+    else renderListView();
+}
+
+// ---- View toggle ----
+let currentView = localStorage.getItem('browseView') || 'shelf';
+
+function setView(v) {
+    currentView = v;
+    localStorage.setItem('browseView', v);
+    document.getElementById('shelf-view').classList.toggle('hidden', v !== 'shelf');
+    document.getElementById('list-view').classList.toggle('hidden', v !== 'list');
+    const shelfBtn = document.getElementById('view-shelf-btn');
+    const listBtn  = document.getElementById('view-list-btn');
+    if (v === 'shelf') {
+        shelfBtn.classList.add('bg-slate-600', 'text-white');
+        shelfBtn.classList.remove('text-slate-400');
+        listBtn.classList.remove('bg-slate-600', 'text-white');
+        listBtn.classList.add('text-slate-400');
+        renderShelfView();
+    } else {
+        listBtn.classList.add('bg-slate-600', 'text-white');
+        listBtn.classList.remove('text-slate-400');
+        shelfBtn.classList.remove('bg-slate-600', 'text-white');
+        shelfBtn.classList.add('text-slate-400');
+        renderListView();
+    }
+}
+
+function renderListView() {
+    const tbody = document.getElementById('list-body');
+    tbody.innerHTML = '';
+    const items = Array.from(document.querySelectorAll('.record-item'))
+        .filter(i => i.style.display !== 'none' && i.dataset.notes !== 'alpha-divider');
+    items.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = idx % 2 === 0 ? 'border-b border-slate-800' : 'border-b border-slate-800 bg-slate-800/40';
+        const fmt = item.dataset.format || '';
+        const isCD = fmt.toLowerCase().includes('cd');
+        const color = isCD ? '#67e8f9' : '#c084fc';
+        tr.innerHTML = `
+            <td class="py-2 px-3 font-medium" style="color:${color}">
+                <a href="${item.href}" onclick="saveFilterState()" class="hover:underline">
+                    ${item.dataset.artistSort ? item.querySelector('p').textContent.trim() : item.dataset.artist}
+                </a>
+            </td>
+            <td class="py-2 px-3 text-slate-200">
+                <a href="${item.href}" onclick="saveFilterState()" class="hover:underline">
+                    ${item.querySelectorAll('p')[1]?.textContent.trim() || ''}
+                </a>
+            </td>
+            <td class="py-2 px-3 text-slate-400 text-xs">${fmt}</td>
+            <td class="py-2 px-3 text-slate-500 text-xs">${item.dataset.year !== '0' ? item.dataset.year : ''}</td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+// Event listeners
+document.getElementById('search').addEventListener('input', function() {
+    filterAndSort();
+    document.getElementById('search-clear').style.display = this.value ? 'block' : 'none';
+});
+document.getElementById('sort').addEventListener('change', filterAndSort);
+
+// --- Filter state persistence for scroll-back ---
+function saveFilterState() {
+    const activeBtn = document.querySelector('.filter-btn.bg-blue-600');
+    sessionStorage.setItem('browseFormat', activeBtn ? activeBtn.dataset.format : 'all');
+    sessionStorage.setItem('browseGenreMatch', activeBtn ? (activeBtn.dataset.genreMatch || '') : '');
+    sessionStorage.setItem('browseSort', document.getElementById('sort').value);
+    sessionStorage.setItem('browseSearch', document.getElementById('search').value);
+}
+
+function restoreFilterState() {
+    const savedFormat    = sessionStorage.getItem('browseFormat');
+    const savedGenre     = sessionStorage.getItem('browseGenreMatch');
+    const savedSort      = sessionStorage.getItem('browseSort');
+    const savedSearch    = sessionStorage.getItem('browseSearch');
+    if (!savedFormat) return;
+
+    if (savedSort)   document.getElementById('sort').value = savedSort;
+    if (savedSearch) {
+        document.getElementById('search').value = savedSearch;
+        document.getElementById('search-clear').style.display = 'block';
+    }
+
+    if (savedFormat === '__genre__' && savedGenre) {
+        const btn = document.querySelector(`[data-format="__genre__"][data-genre-match="${savedGenre}"]`);
+        if (btn) { filterByGenre(btn); return; }
+    } else if (savedFormat === '__dupes__') {
+        const btn = document.querySelector('[data-format="__dupes__"]');
+        if (btn) { filterByGenre(btn); return; }
+    } else if (savedFormat && savedFormat !== 'all') {
+        filterByFormat(savedFormat);
+        return;
+    }
+    filterAndSort();
+}
+
+// Restore on load
+restoreFilterState();
+setView(currentView);
+const hash = window.location.hash;
+if (hash && hash.startsWith('#record-')) {
+    const el = document.querySelector(hash);
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+}
+</script>
+
+<style>
+/* Shelf view */
+.shelf-strip {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: #475569 #1e293b;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+.shelf-strip::-webkit-scrollbar { height: 6px; }
+.shelf-strip::-webkit-scrollbar-track { background: #1e293b; border-radius: 3px; }
+.shelf-strip::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+.shelf-card {
+    flex: 0 0 120px;
+    width: 120px;
+    text-decoration: none;
+    color: inherit;
+}
+.shelf-card img, .shelf-card .shelf-placeholder {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 4px;
+    display: block;
+}
+.shelf-card .shelf-placeholder {
+    background: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+.shelf-card .shelf-info {
+    font-size: 0.6rem;
+    line-height: 1.3;
+    margin-top: 3px;
+    color: #94a3b8;
+    overflow: hidden;
+}
+.shelf-card .shelf-info .shelf-artist { color: #e2e8f0; font-weight: 600; }
+.shelf-card .shelf-info .shelf-pos { color: #ef4444; }
+.shelf-card .shelf-info .shelf-price { color: #4ade80; font-family: monospace; }
+.shelf-card.search-match { outline: 4px solid #9333ea; outline-offset: 2px; border-radius: 4px; }
+.shelf-card.search-context { opacity: 0.6; }
+
+/* Search shelf-context view */
+.search-match {
+    outline: 4px solid #9333ea;
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+}
+.search-context {
+    opacity: 0.6;
+}
+
+/* Record lightbox */
+#rec-lightbox {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.88);
+    align-items: flex-start; justify-content: center;
+    overflow-y: auto; padding: 24px 12px;
+}
+#rec-lightbox.open { display: flex; }
+#rec-lightbox-inner {
+    background: #1e293b; border-radius: 12px;
+    max-width: 480px; width: 100%;
+    overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+}
+#rec-lb-cover { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+#rec-lb-cover-placeholder {
+    width: 100%; aspect-ratio: 1; background: #334155;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 5rem;
+}
+#rec-lb-body { padding: 16px; }
+#rec-lb-artist { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; }
+#rec-lb-sort   { font-size: 0.75rem; color: #64748b; margin-top: 1px; }
+#rec-lb-title  { font-size: 0.9rem; color: #94a3b8; margin-top: 4px; }
+.rec-lb-row    { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.rec-lb-badge  { font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: #334155; color: #94a3b8; }
+.rec-lb-badge.shelf  { background: #312e81; color: #a5b4fc; }
+.rec-lb-badge.price  { background: #14532d; color: #86efac; font-family: monospace; }
+.rec-lb-badge.label  { background: #1e3a5f; color: #93c5fd; }
+#rec-lb-tracks { margin-top: 14px; }
+#rec-lb-tracks h4 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; margin-bottom: 6px; }
+.rec-lb-track  { display: flex; gap: 8px; padding: 4px 0; border-top: 1px solid #334155; font-size: 0.78rem; color: #94a3b8; }
+.rec-lb-track .pos { color: #475569; min-width: 24px; }
+.rec-lb-track .dur { color: #475569; margin-left: auto; }
+.rec-lb-loading { color: #475569; font-size: 0.8rem; padding: 8px 0; }
+#rec-lightbox { cursor: pointer; }
+#rec-lightbox-inner { cursor: default; }
+</style>
+
+<!-- Record lightbox modal -->
+<div id="rec-lightbox" onclick="closeRecordLightbox()">
+  <div id="rec-lightbox-inner" onclick="event.stopPropagation()">
+    <img id="rec-lb-cover" src="" alt="" style="display:none">
+    <div id="rec-lb-cover-placeholder">🎵</div>
+    <div id="rec-lb-body">
+      <div id="rec-lb-artist"></div>
+      <div id="rec-lb-sort"></div>
+      <div id="rec-lb-title"></div>
+      <div class="rec-lb-row" id="rec-lb-badges"></div>
+      <div id="rec-lb-tracks"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openRecordLightbox(card) {
+    const lb = document.getElementById('rec-lightbox');
+    const img = card.querySelector('img');
+    const id  = card.dataset.recordId;
+
+    // Cover
+    const lbCover = document.getElementById('rec-lb-cover');
+    const lbPlaceholder = document.getElementById('rec-lb-cover-placeholder');
+    if (img) {
+        lbCover.src = img.src;
+        lbCover.style.display = 'block';
+        lbPlaceholder.style.display = 'none';
+    } else {
+        lbCover.style.display = 'none';
+        lbPlaceholder.style.display = 'flex';
+    }
+
+    // Show immediately with what we have from data attributes
+    document.getElementById('rec-lb-artist').textContent = card.dataset.artist
+        ? card.dataset.artist.replace(/\b\w/g, c => c.toUpperCase()) : '';
+    document.getElementById('rec-lb-sort').textContent = '';
+    document.getElementById('rec-lb-title').textContent = '';
+    document.getElementById('rec-lb-badges').innerHTML = '';
+    document.getElementById('rec-lb-tracks').innerHTML = '<div class="rec-lb-loading">Loading details…</div>';
+
+    lb.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    // Fetch full details
+    fetch('/api/record/' + id)
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('rec-lb-artist').textContent = d.artist;
+            document.getElementById('rec-lb-sort').textContent   = d.artist_sort && d.artist_sort !== d.artist ? 'Sort: ' + d.artist_sort : '';
+            document.getElementById('rec-lb-title').textContent  = d.title + (d.year ? '  (' + d.year + ')' : '');
+
+            // Badges
+            const badges = [];
+            if (d.shelf) {
+                const pos = card.dataset.shelfDisplay;
+                badges.push(`<span class="rec-lb-badge shelf">${pos || d.shelf}</span>`);
+            }
+            if (d.label)      badges.push(`<span class="rec-lb-badge label">${d.label}</span>`);
+            if (d.format)     badges.push(`<span class="rec-lb-badge">${d.format}</span>`);
+            if (d.price_low)  {
+                const p = '$' + Math.round(d.price_low) + (d.price_high ? ' – $' + Math.round(d.price_high) : '');
+                badges.push(`<span class="rec-lb-badge price">${p} Discogs low ask</span>`);
+            }
+            document.getElementById('rec-lb-badges').innerHTML = badges.join('');
+
+            // Tracks
+            const tracksEl = document.getElementById('rec-lb-tracks');
+            if (d.tracks && d.tracks.length > 0) {
+                let html = '<h4>Track Listing</h4>';
+                d.tracks.forEach(t => {
+                    html += `<div class="rec-lb-track">
+                        <span class="pos">${t.pos || ''}</span>
+                        <span>${t.title}${t.artist ? ' <span style="color:#475569">— ' + t.artist + '</span>' : ''}</span>
+                        ${t.duration ? '<span class="dur">' + t.duration + '</span>' : ''}
+                    </div>`;
+                });
+                tracksEl.innerHTML = html;
+            } else {
+                tracksEl.innerHTML = '<div class="rec-lb-loading">No track listing available</div>';
+            }
+        })
+        .catch(() => {
+            document.getElementById('rec-lb-tracks').innerHTML = '<div class="rec-lb-loading">Could not load details</div>';
+        });
+}
+
+function closeRecordLightbox() {
+    document.getElementById('rec-lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRecordLightbox(); });
+</script>
+
+{% endblock %}

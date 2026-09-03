@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Review Records - Music-Catalog{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <a href="{{ url_for('index') }}" class="text-blue-400 hover:text-blue-300 mb-4 inline-block">← Back</a>
+    <h1 class="text-4xl font-bold">Records Needing Review</h1>
+    <p class="text-slate-400">{{ records|length }} record(s) marked for review</p>
+</div>
+
+{% if records %}
+<div class="space-y-4">
+    {% for record in records %}
+    <div class="bg-slate-800 rounded-lg p-6 flex flex-col md:flex-row gap-6">
+        <!-- Cover -->
+        <div class="w-full md:w-32 h-32 bg-slate-700 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
+            {% if record.cover_art_path %}
+            <img
+                src="{{ url_for('serve_cover', filename=record.cover_art_path.split('/')[-1]) }}"
+                alt="{{ record.artist }} - {{ record.title }}"
+                class="w-full h-full object-cover"
+            >
+            {% else %}
+            <div class="text-4xl">🎵</div>
+            {% endif %}
+        </div>
+
+        <!-- Details -->
+        <div class="flex-1">
+            <h3 class="text-xl font-bold mb-1">{{ record.artist }}</h3>
+            <p class="text-slate-300 mb-3">{{ record.title }}</p>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-4">
+                {% if record.year %}
+                <div>
+                    <p class="text-slate-400 text-xs">Year</p>
+                    <p>{{ record.year }}</p>
+                </div>
+                {% endif %}
+                {% if record.format %}
+                <div>
+                    <p class="text-slate-400 text-xs">Format</p>
+                    <p>{{ record.format }}</p>
+                </div>
+                {% endif %}
+                {% if record.label %}
+                <div>
+                    <p class="text-slate-400 text-xs">Label</p>
+                    <p>{{ record.label }}</p>
+                </div>
+                {% endif %}
+                {% if record.notes %}
+                <div>
+                    <p class="text-slate-400 text-xs">Notes</p>
+                    <p class="text-xs truncate">{{ record.notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-wrap gap-2">
+                <a
+                    href="{{ url_for('view_record', record_id=record.id) }}"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+                >
+                    View Details
+                </a>
+                <a
+                    href="{{ url_for('edit_record', record_id=record.id) }}?from_review=1"
+                    class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition text-sm"
+                >
+                    Edit
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-16 bg-slate-800 rounded-lg">
+    <p class="text-slate-400 text-lg mb-4">No records need review</p>
+    <a href="{{ url_for('index') }}" class="text-blue-400 hover:text-blue-300">Back to collection</a>
+</div>
+{% endif %}
+{% endblock %}

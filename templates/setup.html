@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup — Vinyl Catalog</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+        .step { display: none; }
+        .step.active { display: block; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeUp 0.28s ease-out; }
+    </style>
+</head>
+<body class="bg-slate-950 min-h-screen flex items-center justify-center px-4 py-12">
+
+    <div class="w-full max-w-lg">
+
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <span class="text-3xl">♪</span>
+            <p class="text-slate-500 text-sm mt-1 tracking-wide uppercase font-medium">Vinyl Catalog · First-Run Setup</p>
+        </div>
+
+        <!-- Progress -->
+        <div class="mb-6">
+            <div class="flex justify-between text-xs text-slate-500 mb-2">
+                <span id="step-label">Step 1 of 3</span>
+                <span id="step-name">Welcome</span>
+            </div>
+            <div class="h-0.5 bg-slate-800 rounded-full">
+                <div id="progress-bar"
+                     class="h-0.5 bg-purple-500 rounded-full transition-all duration-500"
+                     style="width: 33%"></div>
+            </div>
+        </div>
+
+        <!-- Card -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-8 shadow-2xl">
+
+            <!-- ─── Step 1: Welcome ─────────────────────────────────────── -->
+            <div id="step-1" class="step active fade-in">
+                <h1 class="text-2xl font-bold mb-2">Welcome to Vinyl Catalog</h1>
+                <p class="text-slate-400 mb-6 leading-relaxed text-sm">
+                    An app for tracking your record collection — cover art, track listings, and live pricing data
+                    pulled from Discogs, with your own shelf positions (optional, once your collection grows) and notes. Everything stays on your Mac, stored in a local SQLite database.
+                </p>
+
+                <div class="bg-slate-800 rounded-xl p-4 mb-6 text-sm space-y-2 text-slate-400">
+                    <p class="text-slate-200 font-medium mb-1">What you will need:</p>
+                    <p>✓ A free <a href="https://www.discogs.com" target="_blank"
+                           class="text-purple-400 hover:underline">Discogs account</a>
+                       — enables automatic album lookup by barcode or title</p>
+                    <p>✓ Terminal open and running
+                       <code class="text-green-400 text-xs bg-slate-900 px-1 py-0.5 rounded">python3 app.py</code>
+                       (you already did this — that's how you're seeing this page!)</p>
+                </div>
+
+                <div class="bg-slate-800 rounded-xl p-4 mb-6 text-sm text-slate-400 leading-relaxed">
+                    <p class="text-slate-200 font-medium mb-1">Starting your collection</p>
+                    <p>
+                        Add records one at a time by scanning a barcode, searching Discogs, or typing manually.
+                        Click <strong class="text-slate-300">↺ Re-Sort</strong> at any time to sort your collection
+                        by artist last name, then by release year, then by title. A–Z alphabet divider markers
+                        can be added as a one-time setup step once your collection is underway.
+                    </p>
+                </div>
+
+                <button onclick="goToStep(2)"
+                        class="w-full bg-purple-700 hover:bg-purple-600 text-white font-medium py-3 px-6 rounded-xl transition">
+                    Get Started →
+                </button>
+            </div>
+
+            <!-- ─── Step 2: Discogs Token ───────────────────────────────── -->
+            <div id="step-2" class="step">
+                <h2 class="text-xl font-bold mb-1">Connect to Discogs</h2>
+                <p class="text-slate-400 text-sm mb-5 leading-relaxed">
+                    A free Discogs API token lets the app auto-fill artist, year, tracklist, and cover art when you scan a barcode or search by title.
+                </p>
+
+                <div class="bg-slate-800 rounded-xl p-4 mb-5 text-sm">
+                    <p class="font-medium text-slate-200 mb-2">How to get your free API token:</p>
+                    <ol class="list-decimal list-inside space-y-1.5 text-slate-400">
+                        <li>
+                            Create a free account at
+                            <a href="https://www.discogs.com" target="_blank"
+                               class="text-purple-400 hover:underline">discogs.com</a>
+                        </li>
+                        <li>
+                            Go to
+                            <a href="https://www.discogs.com/settings/developers" target="_blank"
+                               class="text-purple-400 hover:underline">Settings → Developers</a>
+                        </li>
+                        <li>Click <strong class="text-slate-300">Generate new token</strong></li>
+                        <li>Copy and paste it into the field below</li>
+                    </ol>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs text-slate-400 uppercase tracking-wide font-medium mb-1.5">
+                        Your Discogs Token
+                    </label>
+                    <input id="token-input"
+                           type="text"
+                           placeholder="Paste token here…"
+                           class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg
+                                  px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500
+                                  focus:border-transparent transition font-mono" />
+                </div>
+
+                <div id="token-status" class="mb-4 text-sm min-h-[1.25rem]"></div>
+
+                <button id="test-btn" onclick="testAndSaveToken()"
+                        class="w-full bg-purple-700 hover:bg-purple-600 text-white font-medium
+                               py-3 px-6 rounded-xl transition mb-3">
+                    Test Token &amp; Continue →
+                </button>
+                <button onclick="skipToken()"
+                        class="w-full text-slate-500 hover:text-slate-300 text-sm py-2 transition">
+                    Skip — I'll add records manually
+                </button>
+            </div>
+
+            <!-- ─── Step 3: Network Access ──────────────────────────────── -->
+            <div id="step-3" class="step">
+                <h2 class="text-xl font-bold mb-1">Access Your Catalog</h2>
+                <p class="text-slate-400 text-sm mb-5 leading-relaxed">
+                    Your catalog runs locally on your Mac. Here is how to reach it:
+                </p>
+
+                <div class="space-y-3 mb-5">
+                    <div class="bg-slate-800 rounded-xl p-4">
+                        <p class="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">On this Mac</p>
+                        <code class="text-green-400 font-mono text-sm">http://localhost:5001</code>
+                    </div>
+                    <div class="bg-slate-800 rounded-xl p-4">
+                        <p class="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">On your phone (same Wi-Fi)</p>
+                        <code class="text-green-400 font-mono text-sm">http://{{ local_ip }}:5001</code>
+                        <p class="text-xs text-slate-500 mt-1">
+                            This is your actual network address — the wizard detected it automatically, so the URL above is correct for your setup.
+                            Type it into Safari on your iPhone while connected to the same Wi-Fi as your Mac and bookmark it for quick access.
+                            Your Mac's IP can occasionally change, so if it stops working, check the Terminal output next time you start the app and update your bookmark.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-amber-950 border border-amber-800 rounded-xl p-3 mb-5 text-xs text-amber-300 leading-relaxed">
+                    <p class="mb-2">Keep Terminal open while using the catalog — closing it stops the app. To restart later, open Terminal and run these two commands:</p>
+                    <div class="flex items-center justify-between bg-amber-900 rounded-lg px-3 py-2 mb-1 group">
+                        <code class="font-mono text-amber-200 text-xs">cd ~/Desktop/music-catalog</code>
+                        <button onclick="copyCmd(this, 'cd ~/Desktop/music-catalog')"
+                                class="ml-3 text-amber-500 hover:text-amber-200 text-xs shrink-0 transition">Copy</button>
+                    </div>
+                    <div class="flex items-center justify-between bg-amber-900 rounded-lg px-3 py-2 group">
+                        <code class="font-mono text-amber-200 text-xs">python3 app.py</code>
+                        <button onclick="copyCmd(this, 'python3 app.py')"
+                                class="ml-3 text-amber-500 hover:text-amber-200 text-xs shrink-0 transition">Copy</button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 rounded-xl p-4 mb-6 text-sm text-slate-400 leading-relaxed">
+                    <p class="text-slate-200 font-medium mb-1">Your first shelf</p>
+                    <p>
+                        All records start unsorted. Add a few, then click
+                        <strong class="text-slate-300">↺ Re-Sort</strong> in the top bar to arrange
+                        them A–Z. Use <strong class="text-slate-300">Shelf Plan</strong> once your
+                        collection is big enough to span multiple physical shelves.
+                    </p>
+                </div>
+
+                <button onclick="finish()"
+                        class="w-full bg-purple-700 hover:bg-purple-600 text-white font-medium
+                               py-3 px-6 rounded-xl transition">
+                    Open My Catalog →
+                </button>
+            </div>
+
+        </div><!-- /card -->
+
+        <p class="text-center text-slate-600 text-xs mt-6">
+            Vinyl Catalog · runs entirely on your Mac · no data sent to any server
+        </p>
+    </div>
+
+    <script>
+        let currentStep = 1;
+
+        const STEPS = {
+            1: { label: 'Step 1 of 3', name: 'Welcome',        progress: '33%'  },
+            2: { label: 'Step 2 of 3', name: 'Discogs Setup',  progress: '66%'  },
+            3: { label: 'Step 3 of 3', name: 'Network Access', progress: '100%' },
+        };
+
+        function goToStep(n) {
+            document.getElementById('step-' + currentStep).classList.remove('active', 'fade-in');
+            currentStep = n;
+            const el = document.getElementById('step-' + n);
+            el.classList.add('active', 'fade-in');
+            document.getElementById('step-label').textContent   = STEPS[n].label;
+            document.getElementById('step-name').textContent    = STEPS[n].name;
+            document.getElementById('progress-bar').style.width = STEPS[n].progress;
+        }
+
+        function setStatus(msg, color) {
+            const el = document.getElementById('token-status');
+            el.className = 'mb-4 text-sm ' + color;
+            el.textContent = msg;
+        }
+
+        async function testAndSaveToken() {
+            const token = document.getElementById('token-input').value.trim();
+            const btn   = document.getElementById('test-btn');
+
+            if (!token) {
+                setStatus('Paste your token above first.', 'text-red-400');
+                return;
+            }
+
+            btn.textContent = 'Testing…';
+            btn.disabled = true;
+            setStatus('Connecting to Discogs…', 'text-slate-400');
+
+            try {
+                const res  = await fetch('/setup/test-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token }),
+                });
+                const data = await res.json();
+
+                if (data.ok) {
+                    const who = data.username ? ' — logged in as ' + data.username : '';
+                    setStatus('✓ Token verified' + who, 'text-green-400');
+                    await persistSetup(token, false);
+                } else {
+                    setStatus('✗ ' + (data.error || 'Token rejected by Discogs'), 'text-red-400');
+                    btn.textContent = 'Test Token & Continue →';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                setStatus('Network error — check your internet connection.', 'text-red-400');
+                btn.textContent = 'Test Token & Continue →';
+                btn.disabled = false;
+            }
+        }
+
+        async function skipToken() {
+            await persistSetup('', true);
+        }
+
+        async function persistSetup(token, skip) {
+            await fetch('/setup/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ discogs_token: token, skip }),
+            });
+            goToStep(3);
+        }
+
+        function finish() {
+            window.location.href = '/';
+        }
+
+        function copyCmd(btn, text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const orig = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.classList.add('text-green-400');
+                setTimeout(() => {
+                    btn.textContent = orig;
+                    btn.classList.remove('text-green-400');
+                }, 1500);
+            });
+        }
+    </script>
+</body>
+</html>

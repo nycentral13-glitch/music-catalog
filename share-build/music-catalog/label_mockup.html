@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Label Mockup</title>
+<style>
+  body {
+    background: #1e1e2e;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding: 40px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    align-items: flex-start;
+  }
+
+  h2 {
+    color: #ccc;
+    width: 100%;
+    font-size: 13px;
+    font-weight: normal;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0 0 8px 0;
+  }
+
+  .group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* ── Option A: Number dominant, artist/title small below ── */
+  .label-a {
+    width: 1in;
+    height: 1in;
+    background: white;
+    border: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    box-sizing: border-box;
+    text-align: center;
+    border-radius: 3px;
+  }
+  .label-a .num {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 1;
+    color: #111;
+  }
+  .label-a .artist {
+    font-size: 6.5px;
+    font-weight: 700;
+    color: #333;
+    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    max-width: 90%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .label-a .title {
+    font-size: 6px;
+    color: #666;
+    max-width: 90%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Option B: Number left stripe ── */
+  .label-b {
+    width: 2in;
+    height: 0.625in;
+    background: white;
+    border: 1px solid #ccc;
+    display: flex;
+    align-items: stretch;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .label-b .stripe {
+    background: #111;
+    color: white;
+    font-size: 20px;
+    font-weight: 900;
+    width: 0.95in;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 1px;
+    padding: 0 10px;
+    box-sizing: border-box;
+  }
+  .label-b .text {
+    padding: 5px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .label-b .artist {
+    font-size: 8px;
+    font-weight: 700;
+    color: #111;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .label-b .title {
+    font-size: 7.5px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+
+  /* ── Option C: Minimal, number + thin rule + artist ── */
+  .label-c {
+    width: 1in;
+    height: 0.75in;
+    background: white;
+    border: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    padding: 5px 7px;
+    box-sizing: border-box;
+    border-radius: 3px;
+    justify-content: center;
+  }
+  .label-c .num {
+    font-size: 26px;
+    font-weight: 900;
+    color: #111;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+  .label-c hr {
+    border: none;
+    border-top: 1.5px solid #ddd;
+    margin: 3px 0;
+  }
+  .label-c .artist {
+    font-size: 6.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #333;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .label-c .title {
+    font-size: 6px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+
+  /* ── Option D: Barcode-era dot matrix feel ── */
+  .label-d {
+    width: 1in;
+    height: 1in;
+    background: white;
+    border: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 6px 7px;
+    box-sizing: border-box;
+    border-radius: 3px;
+  }
+  .label-d .num {
+    font-family: 'Courier New', monospace;
+    font-size: 30px;
+    font-weight: 700;
+    color: #111;
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+  .label-d .artist {
+    font-family: 'Courier New', monospace;
+    font-size: 6.5px;
+    font-weight: 700;
+    color: #111;
+    text-transform: uppercase;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .label-d .title {
+    font-family: 'Courier New', monospace;
+    font-size: 6px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    margin-top: 1px;
+  }
+
+  .px-label {
+    color: #888;
+    font-size: 11px;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="group">
+  <h2>A — Square (1" × 1")</h2>
+  <div class="label-a">
+    <div class="num">2400</div>
+    <div class="artist">Rolling Stones, The</div>
+    <div class="title">Exile on Main St.</div>
+  </div>
+  <div class="label-a">
+    <div class="num">100</div>
+    <div class="artist">Abba</div>
+    <div class="title">Arrival</div>
+  </div>
+  <span class="px-label">Avery 5408 or similar</span>
+</div>
+
+<div class="group">
+  <h2>B — Wide stripe (2" × 0.625")</h2>
+  <div class="label-b">
+    <div class="stripe">58200</div>
+    <div class="text">
+      <div class="artist">Rolling Stones, The</div>
+      <div class="title">Exile on Main St.</div>
+    </div>
+  </div>
+  <div class="label-b">
+    <div class="stripe">100</div>
+    <div class="text">
+      <div class="artist">Abba</div>
+      <div class="title">Arrival</div>
+    </div>
+  </div>
+  <div class="label-b">
+    <div class="stripe">116000</div>
+    <div class="text">
+      <div class="artist">Zappa, Frank</div>
+      <div class="title">Hot Rats</div>
+    </div>
+  </div>
+  <span class="px-label">Avery 5163 or similar (2" × 4" cut to half)</span>
+</div>
+
+<div class="group">
+  <h2>C — Portrait with rule (1" × 0.75")</h2>
+  <div class="label-c">
+    <div class="num">2400</div>
+    <hr>
+    <div class="artist">Rolling Stones, The</div>
+    <div class="title">Exile on Main St.</div>
+  </div>
+  <div class="label-c">
+    <div class="num">100</div>
+    <hr>
+    <div class="artist">Abba</div>
+    <div class="title">Arrival</div>
+  </div>
+  <span class="px-label">Avery 5267 or similar</span>
+</div>
+
+<div class="group">
+  <h2>D — Monospace / utilitarian (1" × 1")</h2>
+  <div class="label-d">
+    <div class="num">2400</div>
+    <div class="artist">Rolling Stones, The</div>
+    <div class="title">Exile on Main St.</div>
+  </div>
+  <div class="label-d">
+    <div class="num">100</div>
+    <div class="artist">Abba</div>
+    <div class="title">Arrival</div>
+  </div>
+  <span class="px-label">Avery 5408 or similar</span>
+</div>
+
+</body>
+</html>

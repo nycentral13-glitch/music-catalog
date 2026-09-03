@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+{% block title %}Shelf Planner - Music-Catalog{% endblock %}
+
+{% block content %}
+
+{% if not shelf_configured %}
+<!-- ── First-time shelf setup ──────────────────────────────────────────────── -->
+<div class="max-w-xl mx-auto">
+    <h1 class="text-2xl font-bold mb-2">Set Up Your Shelves</h1>
+    <p class="text-slate-400 text-sm mb-6 leading-relaxed">
+        Tell the app how many shelves you have and how wide each one is. This lets
+        Re-Sort distribute your records proportionally across your actual physical shelves.
+        You can change this any time from Shelf Plan.
+    </p>
+
+    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-4">
+
+        <div class="mb-5">
+            <label class="block text-sm font-medium text-slate-300 mb-1">Number of shelves</label>
+            <input id="shelf-count-input" type="number" min="1" max="50" placeholder="e.g. 5"
+                   oninput="onShelfCountChange(this.value)"
+                   class="w-32 bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500" />
+        </div>
+
+        <div id="width-inputs" class="space-y-2 mb-6 hidden">
+            <p class="text-xs text-slate-500 mb-3">Enter the width of each shelf in inches. Entering the first value fills all others — adjust any individually.</p>
+        </div>
+
+        <div id="setup-status" class="mb-4 text-sm hidden"></div>
+
+        <button id="save-config-btn" onclick="saveConfig()" disabled
+                class="w-full bg-purple-700 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed
+                       text-white font-medium py-3 px-6 rounded-xl transition">
+            Save &amp; Open Shelf Planner →
+        </button>
+    </div>
+</div>
+
+<script>
+function onShelfCountChange(val) {
+    const n = parseInt(val);
+    const container = document.getElementById('width-inputs');
+    const btn = document.getElementById('save-config-btn');
+
+    if (!n || n < 1 || n > 50) {
+        container.classList.add('hidden');
+        btn.disabled = true;
+        return;
+    }
+
+    container.classList.remove('hidden');
+    btn.disabled = false;
+
+    // Preserve existing values
+    const existing = Array.from(container.querySelectorAll('input[data-shelf]'))
+        .reduce((m, el) => { m[el.dataset.shelf] = el.value; return m; }, {});
+    const firstVal = existing[1] || '';
+
+    container.innerHTML = '<p class="text-xs text-slate-500 mb-3">Enter the width of each shelf in inches. Entering the first value fills all others — adjust any individually.</p>';
+
+    for (let i = 1; i <= n; i++) {
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-3';
+        const label = document.createElement('span');
+        label.className = 'text-sm text-slate-400 w-16 shrink-0';
+        label.textContent = `Shelf ${i}`;
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '1';
+        input.max = '200';
+        input.step = '0.5';
+        input.placeholder = 'inches';
+        input.dataset.shelf = i;
+        input.className = 'w-28 bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-purple-500';
+        input.value = existing[i] || firstVal;
+        if (i === 1) {
+            input.oninput = function() {
+                document.querySelectorAll('#width-inputs input[data-shelf]').forEach(el => {
+                    if (el.dataset.shelf !== '1' && !el.dataset.modified) {
+                        el.value = this.value;
+                    }
+                });
+            };
+        } else {
+            input.oninput = function() { this.dataset.modified = '1'; };
+        }
+        row.appendChild(label);
+        row.appendChild(input);
+        container.appendChild(row);
+    }
+}
+
+async function saveConfig() {
+    const n = parseInt(document.getElementById('shelf-count-input').value);
+    const inputs = document.querySelectorAll('#width-inputs input[data-shelf]');
+    const widths = Array.from(inputs).map(el => parseFloat(el.value));
+
+    if (widths.some(w => !w || w <= 0)) {
+        const s = document.getElementById('setup-status');
+        s.className = 'mb-4 text-sm text-red-400';
+        s.textContent = 'Please enter a width for every shelf.';
+        s.classList.remove('hidden');
+        return;
+    }
+
+    const btn = document.getElementById('save-config-btn');
+    btn.textContent = 'Saving…';
+    btn.disabled = true;
+
+    const res  = await fetch('/shelf-planner/configure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shelf_count: n, shelf_widths: widths })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+        window.location.reload();
+    } else {
+        const s = document.getElementById('setup-status');
+        s.className = 'mb-4 text-sm text-red-400';
+        s.textContent = '✗ ' + (data.error || 'Something went wrong');
+        s.classList.remove('hidden');
+        btn.textContent = 'Save & Open Shelf Planner →';
+        btn.disabled = false;
+    }
+}
+</script>
+
+{% else %}
+<!-- ── Normal shelf planner ────────────────────────────────────────────────── -->
+<div class="mb-6">
+    <a href="{{ url_for('index') }}" class="text-blue-400 hover:text-blue-300 mb-4 inline-block">← Back</a>
+    <h1 class="text-4xl font-bold">Shelf Planner</h1>
+    <p class="text-slate-400 mt-1">{{ shelf_count }} shelves configured.
+       Set the last record for each shelf, then apply.
+       <a href="?reconfigure=1" class="text-slate-500 hover:text-slate-300 text-sm ml-2">Change shelf setup</a>
+    </p>
+</div>
+
+<!-- Controls -->
+<div class="bg-slate-800 rounded-lg p-4 mb-6 flex flex-wrap gap-3 items-center">
+    <button onclick="proposeBreaks()" id="propose-btn"
+        class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition">
+        ⚡ Auto-Propose Breaks
+    </button>
+    <button onclick="savePlan()" id="save-btn"
+        class="px-5 py-2 bg-green-700 hover:bg-green-600 text-white rounded-lg font-medium transition">
+        💾 Save Endpoints
+    </button>
+    <button onclick="applyPlan()" id="apply-btn"
+        class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition">
+        ✅ Apply to Database
+    </button>
+    <span id="status-msg" class="text-sm text-slate-400 ml-2"></span>
+    <div class="ml-auto text-right">
+        <span id="summary-total" class="text-slate-300 text-sm"></span>
+    </div>
+</div>
+
+<!-- Loading state -->
+<div id="loading" class="text-center py-16 text-slate-400">
+    <p class="text-lg">⏳ Loading records...</p>
+</div>
+
+<!-- Shelf table -->
+<div id="planner" class="hidden space-y-3"></div>
+
+<script>
+let allRecords = [];     // all rows from DB, in sort order
+let realRecords = [];    // non-divider records only, with cumulative unit index
+let savedPlan = {};      // shelf_num (int) -> end_record_id
+let currentPlan = {};    // shelf_num (int) -> end_record_id  (working copy)
+
+const TARGET_SHELVES = {{ shelf_count }};
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+async function loadRecords() {
+    const res = await fetch('/shelf-planner/records');
+    const data = await res.json();
+    allRecords = data.records;
+    savedPlan  = {};
+    for (const [k, v] of Object.entries(data.saved_plan || {})) {
+        savedPlan[parseInt(k)] = v;
+    }
+    currentPlan = Object.assign({}, savedPlan);
+
+    // Build real-record list with running unit index
+    let cum = 0;
+    realRecords = [];
+    allRecords.forEach((r, i) => {
+        r._idx = i;  // position in allRecords
+        if (!r.is_divider) {
+            cum += r.weight;
+            r._cum_units = cum;
+            r._real_idx  = realRecords.length;
+            realRecords.push(r);
+        }
+    });
+
+    const totalUnits = realRecords.reduce((s, r) => s + r.weight, 0);
+    document.getElementById('summary-total').textContent =
+        `${realRecords.length} records · ${totalUnits} units · target ${Math.round(totalUnits / TARGET_SHELVES)} units/shelf`;
+
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('planner').classList.remove('hidden');
+
+    // If we have a saved plan render it, otherwise auto-propose
+    if (Object.keys(currentPlan).length === TARGET_SHELVES - 1) {
+        renderTable();
+    } else {
+        proposeBreaks();
+    }
+}
+
+// ── Algorithm ─────────────────────────────────────────────────────────────────
+function proposeBreaks() {
+    const totalUnits = realRecords.reduce((s, r) => s + r.weight, 0);
+    const target     = totalUnits / TARGET_SHELVES;
+    const newPlan    = {};
+
+    let cum   = 0;
+    let shelf = 1;
+
+    for (let i = 0; i < realRecords.length; i++) {
+        const r = realRecords[i];
+        cum += r.weight;
+
+        if (shelf >= TARGET_SHELVES) break;
+
+        if (cum >= target * shelf) {
+            // Raw break after record i — now apply constraints
+
+            // 1. Walk forward past any remaining records of the same artist
+            let breakIdx = i;
+            const artist = r.artist_sort.toLowerCase();
+            while (breakIdx + 1 < realRecords.length &&
+                   realRecords[breakIdx + 1].artist_sort.toLowerCase() === artist) {
+                breakIdx++;
+            }
+
+            // 2. Check if a letter divider falls within 8 real records ahead
+            //    If so, move break to just before the divider
+            const lookAhead = 8;
+            const nextRealStart = breakIdx + 1;
+            let dividerBreak = -1;
+            for (let j = nextRealStart; j < Math.min(nextRealStart + lookAhead, realRecords.length); j++) {
+                // Check allRecords between realRecords[j-1]._idx and realRecords[j]._idx
+                const prevAllIdx = (j > 0) ? realRecords[j - 1]._idx : 0;
+                const nextAllIdx = realRecords[j]._idx;
+                for (let ai = prevAllIdx + 1; ai < nextAllIdx; ai++) {
+                    if (allRecords[ai] && allRecords[ai].is_divider) {
+                        dividerBreak = j - 1;  // end shelf before the divider gap
+                        break;
+                    }
+                }
+                if (dividerBreak >= 0) break;
+                // Also check if realRecords[j] itself is preceded by a divider in allRecords
+            }
+
+            if (dividerBreak >= 0 && dividerBreak >= i) {
+                breakIdx = dividerBreak;
+            }
+
+            newPlan[shelf] = realRecords[breakIdx].id;
+            shelf++;
+        }
+    }
+
+    currentPlan = newPlan;
+    renderTable();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderTable() {
+    const container = document.getElementById('planner');
+    container.innerHTML = '';
+
+    // Build shelf segments from currentPlan
+    const segments = buildSegments();
+
+    segments.forEach((seg, si) => {
+        const shelfNum = si + 1;
+        const isLast   = shelfNum === TARGET_SHELVES;
+        const warnings = getWarnings(seg, isLast);
+
+        const div = document.createElement('div');
+        div.className = 'bg-slate-800 rounded-lg p-4';
+        div.id = `shelf-row-${shelfNum}`;
+
+        const warnHtml = warnings.length
+            ? `<div class="flex gap-2 mt-2">${warnings.map(w =>
+                `<span class="text-xs px-2 py-0.5 rounded ${w.cls}">${w.msg}</span>`
+              ).join('')}</div>`
+            : '';
+
+        const endRecord = isLast ? seg.records[seg.records.length - 1] : getEndRecord(shelfNum);
+
+        div.innerHTML = `
+            <div class="flex flex-wrap items-start gap-4">
+                <!-- Shelf label -->
+                <div class="w-16 shrink-0">
+                    <span class="text-lg font-bold text-slate-200">S${shelfNum}</span>
+                    <div class="text-xs text-slate-500 mt-0.5">${seg.units} units</div>
+                    <div class="text-xs text-slate-500">${seg.records.length} rec</div>
+                </div>
+
+                <!-- Starts with -->
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs text-slate-500 mb-0.5">Starts with</div>
+                    <div class="text-sm text-slate-300 truncate">${formatRecord(seg.records[0])}</div>
+                </div>
+
+                <!-- Ends with / dropdown -->
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs text-slate-500 mb-0.5">Ends with${isLast ? ' (auto)' : ''}</div>
+                    ${isLast
+                        ? `<div class="text-sm text-slate-300 truncate">${formatRecord(endRecord)}</div>`
+                        : `<select onchange="onBreakChange(${shelfNum}, this.value)"
+                                  class="w-full bg-slate-700 text-white text-sm rounded px-2 py-1.5 border border-slate-600 focus:border-blue-500"
+                                  id="sel-${shelfNum}">
+                             ${buildOptions(shelfNum, seg)}
+                           </select>`
+                    }
+                </div>
+
+                <!-- Fill bar -->
+                <div class="w-24 shrink-0 hidden md:block">
+                    ${fillBar(seg.units)}
+                </div>
+            </div>
+            ${warnHtml}
+        `;
+        container.appendChild(div);
+    });
+}
+
+function buildSegments() {
+    // Map record id -> shelf from currentPlan (shelves 1-11 have explicit end points)
+    const endpointToShelf = {};
+    for (const [shelf, id] of Object.entries(currentPlan)) {
+        endpointToShelf[id] = parseInt(shelf);
+    }
+
+    const segments = Array.from({length: TARGET_SHELVES}, () => ({records: [], units: 0}));
+    let shelfIdx = 0;
+
+    for (const r of realRecords) {
+        if (shelfIdx < TARGET_SHELVES) {
+            segments[shelfIdx].records.push(r);
+            segments[shelfIdx].units += r.weight;
+        }
+        if (endpointToShelf[r.id] !== undefined && shelfIdx < TARGET_SHELVES - 1) {
+            shelfIdx++;
+        }
+    }
+    return segments;
+}
+
+function getEndRecord(shelfNum) {
+    const id = currentPlan[shelfNum];
+    return realRecords.find(r => r.id === id);
+}
+
+function formatRecord(r) {
+    if (!r) return '<span class="text-slate-500">—</span>';
+    const fmt = r.format === 'Double LP' ? ' <span class="text-amber-400 text-xs">2xLP</span>'
+              : r.format === 'Box Set'   ? ' <span class="text-purple-400 text-xs">Box</span>'
+              : '';
+    const name = (r.artist_sort || r.artist || '').replace(/\b\w/g, c => c.toUpperCase());
+    return `<span class="font-medium">${escHtml(name)}</span> — <span class="text-slate-400">${escHtml(r.title)}</span>${fmt}`;
+}
+
+function buildOptions(shelfNum, seg) {
+    // Show: all records from ~15 before the current endpoint to ~15 after,
+    // plus artist boundaries and divider markers
+    const currentEndId = currentPlan[shelfNum];
+    const currentEndIdx = realRecords.findIndex(r => r.id === currentEndId);
+
+    // Window: from ~10 before current start of NEXT shelf to +20 after
+    const windowStart = Math.max(0, currentEndIdx - 15);
+    const windowEnd   = Math.min(realRecords.length - 1, currentEndIdx + 15);
+
+    let html = '';
+    let prevArtist = null;
+
+    for (let i = windowStart; i <= windowEnd; i++) {
+        const r = realRecords[i];
+        const artist = r.artist_sort.toLowerCase();
+        const isArtistBoundary = prevArtist !== null && artist !== prevArtist;
+        const isDividerNext = hasDividerAfter(i);
+        const selected = r.id === currentEndId ? 'selected' : '';
+
+        let label = `${(r.artist_sort || r.artist).substring(0, 28)} — ${r.title.substring(0, 32)}`;
+        if (r.format === 'Double LP') label += ' [2x]';
+        if (isDividerNext)            label += ' ◆ letter break';
+        if (isArtistBoundary)         label = '─── ' + label;
+
+        html += `<option value="${r.id}" ${selected}>${escHtml(label)}</option>`;
+        prevArtist = artist;
+    }
+    return html;
+}
+
+function hasDividerAfter(realIdx) {
+    // Check if there's a letter divider in allRecords between realRecords[realIdx] and realRecords[realIdx+1]
+    if (realIdx + 1 >= realRecords.length) return false;
+    const a = realRecords[realIdx]._idx;
+    const b = realRecords[realIdx + 1]._idx;
+    for (let i = a + 1; i < b; i++) {
+        if (allRecords[i] && allRecords[i].is_divider) return true;
+    }
+    return false;
+}
+
+function getWarnings(seg, isLast) {
+    const warnings = [];
+    if (seg.records.length === 0) {
+        warnings.push({msg: 'Empty shelf', cls: 'bg-red-900 text-red-300'});
+        return warnings;
+    }
+    if (!isLast) {
+        // Check artist split: does the next shelf start with same artist as this shelf ends?
+        const lastArtist = seg.records[seg.records.length - 1].artist_sort.toLowerCase();
+        const segs = buildSegments();
+        const segIdx = segs.indexOf(seg);
+        if (segIdx + 1 < segs.length && segs[segIdx + 1].records.length > 0) {
+            const nextArtist = segs[segIdx + 1].records[0].artist_sort.toLowerCase();
+            if (lastArtist === nextArtist) {
+                warnings.push({msg: '⚠ Artist split across shelf', cls: 'bg-red-900 text-red-300'});
+            }
+        }
+    }
+    const units = seg.units;
+    const totalUnits = realRecords.reduce((s, r) => s + r.weight, 0);
+    const target = totalUnits / TARGET_SHELVES;
+    if (units > target * 1.25) warnings.push({msg: `Overloaded (${units} units)`, cls: 'bg-orange-900 text-orange-300'});
+    if (units < target * 0.7)  warnings.push({msg: `Light (${units} units)`, cls: 'bg-slate-700 text-slate-400'});
+    return warnings;
+}
+
+function fillBar(units) {
+    const totalUnits = realRecords.reduce((s, r) => s + r.weight, 0);
+    const target = totalUnits / TARGET_SHELVES;
+    const pct = Math.min(100, Math.round((units / target) * 100));
+    const color = pct > 125 ? 'bg-orange-500' : pct > 100 ? 'bg-green-500' : 'bg-blue-500';
+    return `
+        <div class="text-xs text-slate-500 mb-1">${pct}% full</div>
+        <div class="h-2 bg-slate-700 rounded overflow-hidden">
+            <div class="${color} h-full rounded" style="width:${pct}%"></div>
+        </div>`;
+}
+
+// ── Interaction ───────────────────────────────────────────────────────────────
+function onBreakChange(shelfNum, newId) {
+    currentPlan[shelfNum] = parseInt(newId);
+    renderTable();
+    // Restore dropdown scroll position to the same record
+    const sel = document.getElementById(`sel-${shelfNum}`);
+    if (sel) sel.value = newId;
+}
+
+// ── Save & Apply ──────────────────────────────────────────────────────────────
+async function savePlan() {
+    if (Object.keys(currentPlan).length < TARGET_SHELVES - 1) {
+        setStatus('⚠ Auto-propose breaks first.');
+        return;
+    }
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true; btn.textContent = '⏳ Saving...';
+    const res  = await fetch('/shelf-planner/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({plan: currentPlan})
+    });
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = '💾 Save Endpoints';
+    if (data.success) {
+        savedPlan = Object.assign({}, currentPlan);
+        setStatus(`✅ Saved ${data.saved} endpoints.`);
+    } else {
+        setStatus('❌ Save failed.');
+    }
+}
+
+async function applyPlan() {
+    if (!confirm('Apply saved plan to the database? This will update shelf assignments for all records in shelves 1–13.')) return;
+    const btn = document.getElementById('apply-btn');
+    btn.disabled = true; btn.textContent = '⏳ Applying...';
+    const res  = await fetch('/shelf-planner/apply', {method: 'POST'});
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = '✅ Apply to Database';
+    if (data.success) {
+        setStatus(`✅ Updated ${data.updated} records. Reload the browse page to see changes.`);
+    } else {
+        setStatus('❌ ' + (data.error || 'Error applying plan.'));
+    }
+}
+
+function setStatus(msg) {
+    document.getElementById('status-msg').textContent = msg;
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadRecords();
+</script>
+{% endif %}
+{% endblock %}

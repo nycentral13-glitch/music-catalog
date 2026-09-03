@@ -1,0 +1,133 @@
+/* Global styles */
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+/* Tailwind overrides for custom styling */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="file"],
+select,
+textarea {
+    transition: all 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="file"]:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 0 0 2px rgb(59, 130, 246);
+}
+
+/* Album grid animations */
+.record-item {
+    transition: transform 0.2s ease;
+}
+
+.record-item:hover {
+    transform: translateY(-4px);
+}
+
+/* Button styling */
+button {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Modal styles */
+#confirmation-modal {
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Responsive images */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: white;
+        color: black;
+    }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    button, input, select, textarea {
+        font-size: 16px;
+    }
+
+    .record-item {
+        tap-highlight-color: transparent;
+    }
+
+    a {
+        -webkit-touch-callout: none;
+    }
+}
+
+/* Loading states */
+.loading {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}

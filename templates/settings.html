@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block title %}Settings — Vinyl Catalog{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+
+    <h1 class="text-2xl font-bold mb-6">Settings</h1>
+
+    <!-- Auto-start card -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-4">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h2 class="text-base font-semibold mb-1">Start automatically at login</h2>
+                <p class="text-sm text-slate-400 leading-relaxed">
+                    When enabled, the catalog starts itself in the background every time your Mac
+                    logs in — no Terminal needed. Just open
+                    <code class="text-green-400 text-xs">localhost:5001</code> in your browser whenever you want it.
+                </p>
+                <p class="text-xs text-slate-500 mt-2">
+                    Uses a macOS LaunchAgent stored at
+                    <code class="text-slate-400">~/Library/LaunchAgents/com.vinyl-catalog.server.plist</code>
+                </p>
+            </div>
+            <div class="shrink-0 pt-0.5">
+                <button id="autostart-btn" onclick="toggleAutostart()"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition min-w-[90px] text-center
+                               {% if autostart %}bg-green-700 hover:bg-green-600 text-white{% else %}bg-slate-700 hover:bg-slate-600 text-slate-200{% endif %}">
+                    {{ 'Enabled' if autostart else 'Disabled' }}
+                </button>
+            </div>
+        </div>
+
+        <div id="autostart-status" class="mt-3 text-sm hidden"></div>
+
+        {% if autostart %}
+        <div class="mt-4 pt-4 border-t border-slate-700 text-xs text-slate-500 leading-relaxed">
+            Auto-start is active. The app will launch silently at every login and log output to
+            <code class="text-slate-400">flask.log</code> in your music-catalog folder.
+            To stop it running right now without disabling auto-start, open Terminal and run:<br>
+            <code class="text-green-400 block mt-1">launchctl unload ~/Library/LaunchAgents/com.vinyl-catalog.server.plist</code>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Discogs token card -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-4">
+        <h2 class="text-base font-semibold mb-1">Discogs API Token</h2>
+        <p class="text-sm text-slate-400 mb-4 leading-relaxed">
+            Update or replace your Discogs token. Get one free at
+            <a href="https://www.discogs.com/settings/developers" target="_blank" class="text-purple-400 hover:underline">discogs.com → Settings → Developers</a>.
+        </p>
+        <input id="token-input" type="text" placeholder="Paste new token here…"
+               class="w-full bg-slate-700 border border-slate-600 text-slate-100 rounded-lg px-3 py-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-500 mb-3" />
+        <div id="token-status" class="text-sm mb-3 min-h-[1.25rem]"></div>
+        <button onclick="saveToken()"
+                class="px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white text-sm font-medium rounded-lg transition">
+            Save Token
+        </button>
+    </div>
+
+    <!-- Discogs sync card -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-4">
+        <h2 class="text-base font-semibold mb-1">Sync to Discogs Collection</h2>
+        <p class="text-sm text-slate-400 mb-4 leading-relaxed">
+            Push all records in your local catalog to your Discogs account as a cloud backup.
+            Enter your Discogs username (the one shown at
+            <a href="https://www.discogs.com/settings/profile" target="_blank" class="text-purple-400 hover:underline">discogs.com/settings/profile</a>).
+        </p>
+        <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+            ⏱ This process takes <strong class="text-slate-400">20–40 minutes</strong> for a large collection. The app syncs one record per second to stay within Discogs' rate limit, and automatically pauses 65 seconds if it gets throttled. Leave this page open and the sync will run to completion in the background.
+        </p>
+        <input id="username-input" type="text" placeholder="Your Discogs username…"
+               class="w-full bg-slate-700 border border-slate-600 text-slate-100 rounded-lg px-3 py-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-500 mb-3" />
+        <div id="sync-status" class="text-sm mb-3 min-h-[1.25rem]"></div>
+        <div class="flex gap-3 flex-wrap">
+            <button onclick="saveUsername()"
+                    class="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white text-sm font-medium rounded-lg transition">
+                Save Username
+            </button>
+            <button onclick="syncDiscogs(false)" id="sync-btn"
+                    class="px-4 py-2 bg-teal-700 hover:bg-teal-600 text-white text-sm font-medium rounded-lg transition">
+                ↑ Sync New Records
+            </button>
+            <button onclick="syncDiscogs(true)" id="sync-full-btn"
+                    class="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white text-sm font-medium rounded-lg transition">
+                ↑ Full Re-Sync
+            </button>
+            <a id="sync-errors-dl" href="/settings/sync-errors-csv" style="display:none"
+               class="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white text-sm font-medium rounded-lg transition">
+                ⬇ Download Discogs Upload Error List (.xlsx)
+            </a>
+        </div>
+    </div>
+
+    <!-- Export card -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-4">
+        <h2 class="text-base font-semibold mb-1">Export Collection</h2>
+        <p class="text-sm text-slate-400 mb-4 leading-relaxed">
+            Download your entire collection in your preferred format.
+        </p>
+        <div class="flex gap-3 flex-wrap items-center">
+            <a href="/export-xlsx"
+               class="inline-block px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white text-sm font-medium rounded-lg transition">
+                ⬇ Excel (.xlsx)
+            </a>
+            <a href="/export-csv"
+               class="inline-block px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white text-sm font-medium rounded-lg transition">
+                ⬇ CSV
+            </a>
+            <button onclick="generatePdfCovers()" id="pdf-covers-btn"
+                    class="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition">
+                ⬇ PDF + Covers
+            </button>
+        </div>
+        <div id="pdf-covers-status" class="mt-3 text-sm text-slate-400 hidden">
+            Generating PDF — this takes about 30 seconds…
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let autostartEnabled = {{ 'true' if autostart else 'false' }};
+
+    async function saveToken() {
+        const input  = document.getElementById('token-input');
+        const status = document.getElementById('token-status');
+        const token  = input.value.trim();
+        if (!token) { status.className = 'text-sm text-red-400 mb-3'; status.textContent = 'Please paste a token first.'; return; }
+        status.className = 'text-sm text-slate-400 mb-3';
+        status.textContent = 'Testing token…';
+        try {
+            const res  = await fetch('/setup/test-token', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({token}) });
+            const data = await res.json();
+            if (data.ok) {
+                await fetch('/settings/save-token', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({token}) });
+                status.className = 'text-sm text-green-400 mb-3';
+                status.textContent = '✓ Token saved — Discogs lookups are active.';
+                input.value = '';
+            } else {
+                status.className = 'text-sm text-red-400 mb-3';
+                status.textContent = '✗ Token test failed: ' + (data.error || 'invalid token');
+            }
+        } catch (e) {
+            status.className = 'text-sm text-red-400 mb-3';
+            status.textContent = 'Network error — is the app still running?';
+        }
+    }
+
+    async function saveUsername() {
+        const input  = document.getElementById('username-input');
+        const status = document.getElementById('sync-status');
+        const username = input.value.trim();
+        if (!username) { status.className = 'text-sm text-red-400 mb-3'; status.textContent = 'Please enter your Discogs username first.'; return; }
+        const res = await fetch('/settings/save-username', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username}) });
+        const data = await res.json();
+        if (data.ok) {
+            status.className = 'text-sm text-green-400 mb-3';
+            status.textContent = `✓ Username "${username}" saved.`;
+            input.value = '';
+        } else {
+            status.className = 'text-sm text-red-400 mb-3';
+            status.textContent = '✗ ' + (data.error || 'Error saving username');
+        }
+    }
+
+    let _syncPollTimer = null;
+
+    async function syncDiscogs(full) {
+        const btn     = document.getElementById('sync-btn');
+        const btnFull = document.getElementById('sync-full-btn');
+        const status  = document.getElementById('sync-status');
+        btn.disabled = true; btnFull.disabled = true;
+        btn.textContent = full ? '↑ Sync New Records' : '⏳ Starting…';
+        btnFull.textContent = full ? '⏳ Starting…' : '↑ Full Re-Sync';
+        status.className = 'text-sm text-slate-400 mb-3';
+        status.textContent = 'Starting sync…';
+        try {
+            const res  = await fetch('/settings/sync-discogs', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({full: !!full}) });
+            const data = await res.json();
+            if (!data.ok) {
+                status.className = 'text-sm text-red-400 mb-3';
+                status.textContent = '✗ ' + (data.error || 'Could not start sync');
+                btn.textContent = '↑ Sync New Records';
+                btn.disabled = false;
+                return;
+            }
+            // Start polling
+            _syncPollTimer = setInterval(pollSyncStatus, 2000);
+        } catch (e) {
+            status.className = 'text-sm text-red-400 mb-3';
+            status.textContent = 'Network error — is the app still running?';
+            btn.textContent = '↑ Sync to Discogs';
+            btn.disabled = false;
+        }
+    }
+
+    async function pollSyncStatus() {
+        const btn     = document.getElementById('sync-btn');
+        const btnFull = document.getElementById('sync-full-btn');
+        const status  = document.getElementById('sync-status');
+        try {
+            const res = await fetch('/settings/sync-status');
+            const d   = await res.json();
+            const pct = d.total ? Math.round((d.done / d.total) * 100) : 0;
+            if (!d.finished) {
+                btn.textContent = `⏳ ${pct}%`;
+                const rateMsg = d.last_status === 429 ? ' — rate limited, waiting…' : '';
+                status.textContent = `Syncing… ${d.done} of ${d.total} (${d.added} added, ${d.errors} errors)${rateMsg}`;
+            } else {
+                clearInterval(_syncPollTimer);
+                let detail = '';
+                if (d.errors > 0 && d.status_counts) {
+                    const parts = Object.entries(d.status_counts).map(([k,v]) => `${v}×HTTP${k}`);
+                    detail = ` (${parts.join(', ')})`;
+                }
+                if (d.errors > 0 && d.added === 0) {
+                    status.className = 'text-sm text-red-400 mb-3';
+                    status.textContent = `✗ All ${d.errors} records failed${detail}`;
+                } else if (d.errors > 0) {
+                    status.className = 'text-sm text-amber-400 mb-3';
+                    status.textContent = `⚠ Done — ${d.added} added, ${d.skipped} skipped, ${d.errors} errors${detail}`;
+                } else {
+                    status.className = 'text-sm text-green-400 mb-3';
+                    status.textContent = `✓ Done — ${d.added} added to Discogs, ${d.skipped} skipped (${d.total} checked).`;
+                }
+                if (d.errors > 0) {
+                    const dl = document.getElementById('sync-errors-dl');
+                    if (dl) dl.style.display = 'inline-block';
+                }
+                btn.textContent = '↑ Sync New Records';
+                btn.disabled = false;
+                btnFull.textContent = '↑ Full Re-Sync';
+                btnFull.disabled = false;
+            }
+        } catch (e) {
+            clearInterval(_syncPollTimer);
+            status.className = 'text-sm text-red-400 mb-3';
+            status.textContent = 'Lost connection during sync.';
+            btn.textContent = '↑ Sync New Records';
+            btn.disabled = false;
+            btnFull.textContent = '↑ Full Re-Sync';
+            btnFull.disabled = false;
+        }
+    }
+
+    async function generatePdfCovers() {
+        const btn    = document.getElementById('pdf-covers-btn');
+        const status = document.getElementById('pdf-covers-status');
+        btn.disabled = true;
+        btn.textContent = '⏳ Generating…';
+        status.classList.remove('hidden');
+        try {
+            const res = await fetch('/generate-phone-pdf-covers', { method: 'POST' });
+            if (!res.ok) { throw new Error('Server error ' + res.status); }
+            const blob = await res.blob();
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url; a.download = 'phone-list-covers.pdf';
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            status.classList.add('hidden');
+        } catch (e) {
+            status.textContent = '✗ Error: ' + e.message;
+        }
+        btn.disabled = false;
+        btn.textContent = '⬇ PDF + Covers';
+    }
+
+    async function toggleAutostart() {
+        const btn    = document.getElementById('autostart-btn');
+        const status = document.getElementById('autostart-status');
+        const action = autostartEnabled ? 'disable' : 'enable';
+
+        btn.textContent = 'Working…';
+        btn.disabled = true;
+        status.className = 'mt-3 text-sm text-slate-400';
+        status.textContent = (action === 'enable') ? 'Registering with macOS…' : 'Removing from macOS…';
+
+        try {
+            const res  = await fetch('/settings/autostart/' + action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const data = await res.json();
+
+            if (data.ok) {
+                autostartEnabled = !autostartEnabled;
+                btn.textContent = autostartEnabled ? 'Enabled' : 'Disabled';
+                btn.className = btn.className
+                    .replace(/bg-(green|slate)-\d00/g, '')
+                    .replace(/hover:bg-(green|slate)-\d00/g, '');
+                if (autostartEnabled) {
+                    btn.classList.add('bg-green-700', 'hover:bg-green-600', 'text-white');
+                    btn.classList.remove('text-slate-200');
+                    status.className = 'mt-3 text-sm text-green-400';
+                    status.textContent = '✓ Auto-start enabled — the app will launch at every login.';
+                } else {
+                    btn.classList.add('bg-slate-700', 'hover:bg-slate-600', 'text-slate-200');
+                    btn.classList.remove('text-white');
+                    status.className = 'mt-3 text-sm text-slate-400';
+                    status.textContent = 'Auto-start disabled — you will need to start the app manually from Terminal.';
+                }
+                btn.disabled = false;
+            } else {
+                status.className = 'mt-3 text-sm text-red-400';
+                status.textContent = '✗ ' + (data.error || 'Something went wrong');
+                btn.textContent = autostartEnabled ? 'Enabled' : 'Disabled';
+                btn.disabled = false;
+            }
+        } catch (e) {
+            status.className = 'mt-3 text-sm text-red-400';
+            status.textContent = 'Network error — is the app still running?';
+            btn.textContent = autostartEnabled ? 'Enabled' : 'Disabled';
+            btn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

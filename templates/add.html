@@ -1,0 +1,857 @@
+{% extends "base.html" %}
+
+{% block title %}Add Record - Music-Catalog{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-4xl font-bold mb-2">Add Record</h1>
+</div>
+
+<!-- Tabs -->
+<div class="bg-slate-800 rounded-t-lg border-b border-slate-700 flex">
+    <button
+        onclick="switchTab('barcode')"
+        class="tab-button flex-1 px-6 py-4 font-medium border-b-2 border-transparent hover:text-white transition"
+        data-tab="barcode"
+    >
+        <span class="inline-flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 inline-block flex-shrink-0">
+                <rect x="2" y="4" width="2" height="16"/><rect x="5" y="4" width="1" height="16"/><rect x="7" y="4" width="2" height="16"/><rect x="10" y="4" width="1" height="16"/><rect x="12" y="4" width="3" height="16"/><rect x="16" y="4" width="1" height="16"/><rect x="18" y="4" width="2" height="16"/><rect x="21" y="4" width="1" height="16"/>
+            </svg>
+            Barcode
+        </span>
+    </button>
+    <button
+        onclick="switchTab('photo')"
+        class="tab-button flex-1 px-6 py-4 font-medium border-b-2 border-transparent hover:text-white transition"
+        data-tab="photo"
+    >
+        📷 Photo
+    </button>
+    <button
+        onclick="switchTab('manual')"
+        class="tab-button flex-1 px-6 py-4 font-medium border-b-2 border-transparent hover:text-white transition"
+        data-tab="manual"
+    >
+        ✏️ Manual
+    </button>
+    <button
+        onclick="switchTab('discogs')"
+        class="tab-button flex-1 px-6 py-4 font-medium border-b-2 border-transparent hover:text-white transition"
+        data-tab="discogs"
+    >
+        🔗 Discogs
+    </button>
+</div>
+
+<div class="bg-slate-800 rounded-b-lg p-8">
+    <!-- Barcode Mode -->
+    <div id="barcode-tab" class="tab-content hidden">
+        <div class="max-w-md mx-auto">
+            <input
+                type="text"
+                id="barcode-input"
+                placeholder="Scan barcode..."
+                autofocus
+                class="w-full px-4 py-3 bg-slate-700 text-white rounded-lg placeholder-slate-500 mb-6"
+            >
+
+            <div id="barcode-result"></div>
+        </div>
+    </div>
+
+    <!-- Photo Mode -->
+    <div id="photo-tab" class="tab-content hidden">
+        <div class="max-w-md mx-auto">
+            <p class="text-slate-300 mb-6">
+                Take or upload a photo of the album cover.
+            </p>
+
+            <div class="mb-6">
+                <input
+                    type="file"
+                    id="photo-input"
+                    accept="image/*"
+                    capture="environment"
+                    class="hidden"
+                >
+                <button
+                    onclick="document.getElementById('photo-input').click()"
+                    class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                >
+                    📷 Choose Photo
+                </button>
+            </div>
+
+            <div id="photo-result"></div>
+        </div>
+    </div>
+
+    <!-- Discogs Link Mode -->
+    <div id="discogs-tab" class="tab-content hidden">
+        <div class="max-w-md mx-auto">
+            <p class="text-slate-300 mb-6">
+                Find the release on <a href="https://www.discogs.com" target="_blank" class="text-blue-400 hover:underline">Discogs</a>, then paste the URL here.
+            </p>
+            <div class="flex gap-2 mb-4">
+                <input
+                    type="text"
+                    id="discogs-url-input"
+                    placeholder="https://www.discogs.com/release/..."
+                    class="flex-1 px-4 py-3 bg-slate-700 text-white rounded-lg placeholder-slate-500"
+                >
+                <button
+                    onclick="lookupDiscogsUrl()"
+                    class="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                >
+                    Look Up
+                </button>
+            </div>
+            <div id="discogs-link-result"></div>
+        </div>
+    </div>
+
+    <!-- Manual Mode -->
+    <div id="manual-tab" class="tab-content">
+        <form id="manual-form" onsubmit="return submitManualForm(event)">
+            <div class="grid md:grid-cols-2 gap-6 max-w-2xl">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Artist *</label>
+                    <input
+                        type="text"
+                        name="artist"
+                        required
+                        class="w-full px-4 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Title *</label>
+                    <input
+                        type="text"
+                        name="title"
+                        required
+                        class="w-full px-4 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Format</label>
+                    <select
+                        name="format"
+                        class="w-full px-4 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">Select format</option>
+                        {% for fmt in formats %}
+                        <option value="{{ fmt }}" {% if fmt == "LP" %}selected{% endif %}>{{ fmt }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Original Release Year</label>
+                    <input
+                        type="number"
+                        name="year"
+                        min="1900"
+                        max="2099"
+                        class="w-full px-4 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Label</label>
+                    <input
+                        type="text"
+                        name="label"
+                        class="w-full px-4 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Catalog Number</label>
+                    <input
+                        type="text"
+                        name="catalog_number"
+                        class="w-full px-4 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Genre</label>
+                    <input
+                        type="text"
+                        name="genre"
+                        placeholder="comma-separated"
+                        class="w-full px-4 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Shelf Section</label>
+                    <input
+                        type="text"
+                        name="shelf_section"
+                        placeholder="e.g., Shelf 1"
+                        class="w-full px-4 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium mb-2">Notes</label>
+                    <textarea
+                        name="notes"
+                        rows="3"
+                        class="w-full px-4 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    ></textarea>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="needs_review" class="w-4 h-4">
+                        <span class="text-sm">Flag for review</span>
+                    </label>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium mb-2">Cover Art</label>
+                    <input
+                        type="file"
+                        name="cover_art"
+                        accept="image/*"
+                        class="w-full px-4 py-2 bg-slate-700 text-white rounded-lg"
+                    >
+                </div>
+
+                <div class="md:col-span-2">
+                    <button
+                        type="submit"
+                        class="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+                    >
+                        Save Record
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Shared form for barcode/photo confirmation -->
+<div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-3">
+    <div class="bg-slate-800 rounded-xl w-full max-w-5xl flex flex-col" style="height:94vh;">
+
+        <!-- Header: title + action buttons -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700 flex-shrink-0">
+            <h2 class="text-xl font-bold text-white">Review Record Details</h2>
+            <div class="flex gap-3">
+                <button type="button" onclick="closeModal()"
+                    class="px-5 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition font-medium text-sm">
+                    Cancel
+                </button>
+                <button type="submit" form="confirmation-form"
+                    class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm">
+                    Save Record
+                </button>
+            </div>
+        </div>
+
+        <!-- Body: cover left, form right -->
+        <div class="flex flex-1 min-h-0 gap-0">
+
+            <!-- Left column: cover art -->
+            <div class="w-72 flex-shrink-0 flex flex-col bg-slate-900 rounded-bl-xl p-4 gap-3">
+                <p class="text-xs text-slate-400 uppercase tracking-wide font-medium">Select Cover</p>
+                <div id="cover-options" class="flex flex-col gap-3"></div>
+                <div id="photo-upload-container" class="hidden mt-2">
+                    <input type="file" id="own-photo-input" accept="image/*"
+                        class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg text-sm">
+                    <button onclick="confirmCoverChoice('own')"
+                        class="w-full mt-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm">
+                        Use This Photo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right column: scrollable form -->
+            <div class="flex-1 overflow-y-auto p-5">
+                <!-- Low ask price display -->
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700">
+                    <span class="text-xs text-slate-400 uppercase tracking-wide font-medium">Discogs Low Ask</span>
+                    <span id="price-preview" class="text-lg font-bold text-green-400">—</span>
+                </div>
+                <form id="confirmation-form">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium mb-1 text-slate-400">Artist *</label>
+                            <input type="text" name="artist" required
+                                class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium mb-1 text-slate-400">Title *</label>
+                            <input type="text" name="title" required
+                                class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium mb-1 text-slate-400">Artist Sort</label>
+                            <input type="text" name="artist_sort"
+                                class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium mb-1 text-slate-400">Format</label>
+                            <select name="format"
+                                class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                                <option value="">Select format</option>
+                                {% for fmt in formats %}
+                                <option value="{{ fmt }}" {% if fmt == "LP" %}selected{% endif %}>{{ fmt }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium mb-1 text-slate-400">Year</label>
+                            <input type="number" name="year" min="1900" max="2099"
+                                class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium mb-1 text-slate-400">Label</label>
+                            <input type="text" name="label"
+                                class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium mb-1 text-slate-400">Catalog Number</label>
+                            <input type="text" name="catalog_number"
+                                class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium mb-1 text-slate-400">UPC</label>
+                            <input type="text" name="upc" readonly
+                                class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg opacity-50 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium mb-1 text-slate-400">Genre</label>
+                            <input type="text" name="genre" placeholder="comma-separated"
+                                class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium mb-1 text-slate-400">Shelf Section</label>
+                            <input type="text" name="shelf_section" placeholder="e.g., Shelf 1"
+                                class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs font-medium mb-1 text-slate-400">Notes</label>
+                            <textarea name="notes" rows="2"
+                                class="w-full px-3 py-2 bg-slate-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"></textarea>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="needs_review" class="w-4 h-4">
+                                <span class="text-sm text-slate-300">Flag for review</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Hidden fields -->
+                    <input type="hidden" name="entry_mode">
+                    <input type="hidden" name="discogs_url">
+                    <input type="hidden" name="discogs_id">
+                    <input type="hidden" name="cover_image_url">
+                    <input type="hidden" name="temp_photo_path">
+                    <input type="hidden" name="use_discogs_image">
+                    <input type="hidden" name="use_own_photo">
+                    <input type="hidden" name="tracklist">
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentTab = 'manual';
+let pendingCoverData = null;
+
+function switchTab(tab) {
+    currentTab = tab;
+    localStorage.setItem('lastAddTab', tab);
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.tab-button').forEach(el => {
+        el.classList.remove('border-blue-500', 'text-white');
+        el.classList.add('border-transparent', 'text-slate-400');
+    });
+
+    document.getElementById(`${tab}-tab`).classList.remove('hidden');
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('border-blue-500', 'text-white');
+    document.querySelector(`[data-tab="${tab}"]`).classList.remove('border-transparent', 'text-slate-400');
+
+    if (tab === 'barcode') {
+        setTimeout(() => document.getElementById('barcode-input').focus(), 100);
+    }
+}
+
+// Barcode scanning
+document.getElementById('barcode-input').addEventListener('keypress', async (e) => {
+    if (e.key === 'Enter') {
+        const upc = e.target.value.trim();
+        if (!upc) return;
+
+        const resultDiv = document.getElementById('barcode-result');
+        resultDiv.innerHTML = '<p class="text-slate-400">Searching...</p>';
+
+        try {
+            const formData = new FormData();
+            formData.append('upc', upc);
+
+            const res = await fetch('/add/barcode', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                if (data.error === 'duplicate') {
+                    resultDiv.innerHTML = `
+                        <div class="bg-amber-900 text-amber-100 p-4 rounded-lg mb-4">
+                            <p class="font-medium">${data.message}</p>
+                            <p class="text-sm mt-2">${data.existing_record.artist} - ${data.existing_record.title}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="document.getElementById('barcode-input').value = ''; document.getElementById('barcode-result').innerHTML = ''; document.getElementById('barcode-input').focus();" class="flex-1 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition">Scan Another</button>
+                            <button onclick="addAnywayFromDuplicate(${JSON.stringify(data.release_info)}, 'barcode', '${upc}')" class="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition">Add Anyway</button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="text-red-400">${data.message}</p>`;
+                }
+                return;
+            }
+
+            // Show confirmation modal
+            showConfirmationModal(data.release_info, 'barcode', upc);
+        } catch (error) {
+            resultDiv.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+        }
+    }
+});
+
+// Photo upload
+document.getElementById('photo-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const resultDiv = document.getElementById('photo-result');
+    resultDiv.innerHTML = '<p class="text-slate-400">Analyzing photo...</p>';
+    const previewReader = new FileReader();
+    previewReader.onload = (ev) => { window.pendingPhotoDataUrl = ev.target.result; };
+    previewReader.readAsDataURL(file);
+
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    try {
+        const res = await fetch('/add/photo', {
+            method: 'POST',
+            body: formData
+        });
+
+        // Use text+JSON.parse instead of res.json() for iOS Safari compatibility
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (parseErr) {
+            resultDiv.innerHTML = `<p class="text-red-400">Server response error. Please try again.</p>`;
+            return;
+        }
+
+        if (!res.ok) {
+            if (data.error === 'duplicate') {
+                resultDiv.innerHTML = `
+                    <div class="bg-amber-900 text-amber-100 p-4 rounded-lg mb-4">
+                        <p class="font-medium">${data.message}</p>
+                        <p class="text-sm mt-2">${data.existing_record.artist} - ${data.existing_record.title}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="document.getElementById('photo-input').value = ''; document.getElementById('photo-result').innerHTML = '';" class="flex-1 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition">Choose Another</button>
+                        <button onclick="addAnywayFromDuplicate(${JSON.stringify(data.release_info)}, 'photo', null)" class="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition">Add Anyway</button>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `<p class="text-red-400">${data.message}</p>`;
+            }
+            return;
+        }
+
+        showConfirmationModal(data.release_info, 'photo', null);
+    } catch (error) {
+        resultDiv.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+    }
+});
+
+// Discogs URL lookup
+async function lookupDiscogsUrl() {
+    const input = document.getElementById('discogs-url-input');
+    const resultDiv = document.getElementById('discogs-link-result');
+    const url = input.value.trim();
+    if (!url) return;
+
+    resultDiv.innerHTML = '<p class="text-slate-400">Looking up release...</p>';
+
+    try {
+        const res = await fetch('/add/discogs-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (parseErr) {
+            resultDiv.innerHTML = '<p class="text-red-400">Server response error. Please try again.</p>';
+            return;
+        }
+
+        if (!res.ok) {
+            resultDiv.innerHTML = `<p class="text-red-400">${data.message || data.error || 'Lookup failed.'}</p>`;
+            return;
+        }
+
+        resultDiv.innerHTML = '';
+        showConfirmationModal(data.release_info, 'discogs', null);
+    } catch (error) {
+        resultDiv.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+    }
+}
+
+// Allow Enter key to trigger lookup
+document.addEventListener('DOMContentLoaded', () => {
+    const discogsInput = document.getElementById('discogs-url-input');
+    if (discogsInput) {
+        discogsInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') lookupDiscogsUrl();
+        });
+    }
+});
+
+function addAnywayFromDuplicate(releaseInfo, mode, upc) {
+    // If we have full release_info, show the confirmation modal as normal
+    if (releaseInfo) {
+        showConfirmationModal(releaseInfo, mode, upc);
+        return;
+    }
+    // Fallback: shouldn't normally be reached
+    alert('Could not load release info. Please try adding manually.');
+}
+
+function normalizeArtistSort(name) {
+    if (!name || name.includes(',')) return name;
+    const articles = ['The ', 'A ', 'An '];
+    for (const article of articles) {
+        if (name.startsWith(article)) {
+            return name.slice(article.length) + ', ' + article.trim();
+        }
+    }
+    return name;
+}
+
+function showConfirmationModal(releaseInfo, mode, upc) {
+    pendingCoverData = { releaseInfo, mode, upc };
+
+    const form = document.getElementById('confirmation-form');
+
+    // Fill form with data
+    form.elements['artist'].value = releaseInfo.artist || '';
+    form.elements['title'].value = releaseInfo.title || '';
+    form.elements['artist_sort'].value = normalizeArtistSort(releaseInfo.artist_sort || releaseInfo.artist || '');
+    // Discogs returns format as an array (e.g. ["Vinyl", "LP, Album"]) — match against known options
+    const validFormats = ['LP', 'Double LP', 'CD', '45', 'Box Set', 'EP', '12 Inch', '10 Inch', '7 Inch'];
+    const rawFormat = releaseInfo.format;
+    let detectedFormat = 'LP';
+    if (Array.isArray(rawFormat)) {
+        for (const f of rawFormat) {
+            if (validFormats.includes(f)) { detectedFormat = f; break; }
+        }
+    } else if (typeof rawFormat === 'string' && validFormats.includes(rawFormat)) {
+        detectedFormat = rawFormat;
+    }
+    form.elements['format'].value = detectedFormat;
+    const yearVal = parseInt(releaseInfo.year, 10);
+    form.elements['year'].value = isNaN(yearVal) ? '' : yearVal;
+    form.elements['label'].value = releaseInfo.label || '';
+    form.elements['catalog_number'].value = releaseInfo.catalog_number || '';
+    form.elements['upc'].value = releaseInfo.upc || upc || '';
+    form.elements['genre'].value = releaseInfo.genre || '';
+    form.elements['discogs_url'].value = releaseInfo.discogs_url || '';
+    form.elements['discogs_id'].value = releaseInfo.discogs_id || '';
+    form.elements['cover_image_url'].value = releaseInfo.cover_image_url || '';
+    form.elements['temp_photo_path'].value = releaseInfo.temp_photo_path || '';
+    form.elements['entry_mode'].value = mode;
+    form.elements['tracklist'].value = JSON.stringify(releaseInfo.tracklist || []);
+
+    document.getElementById('photo-upload-container').classList.add('hidden');
+
+    // Build cover picker
+    const coverOptions = document.getElementById('cover-options');
+    coverOptions.innerHTML = '';
+    const urls = releaseInfo.cover_image_urls || (releaseInfo.cover_image_url ? [releaseInfo.cover_image_url] : []);
+
+    if (urls.length > 0) {
+        // Discogs cover found — show it regardless of mode, auto-select first
+        form.elements['cover_image_url'].value = urls[0];
+        form.elements['use_discogs_image'].value = '1';
+        form.elements['use_own_photo'].value = '';
+
+        urls.forEach((url, i) => {
+            const div = document.createElement('div');
+            div.className = `flex-1 cursor-pointer rounded-lg overflow-hidden transition ${i === 0 ? 'ring-2 ring-green-500' : 'ring-1 ring-slate-600 hover:ring-blue-400'}`;
+            div.id = `cover-option-${i}`;
+            div.onclick = () => selectCover(i, url);
+            div.innerHTML = `<img src="${url}" class="w-full aspect-square object-cover" onerror="this.closest('div').style.display='none'">
+                             <p class="text-center text-xs py-1 ${i === 0 ? 'text-green-400' : 'text-slate-400'}">${i === 0 ? 'Selected ✓' : 'Option ' + (i+1)}</p>`;
+            coverOptions.appendChild(div);
+        });
+    } else if (releaseInfo.temp_photo_path) {
+        // No Discogs cover found — fall back to showing the uploaded photo
+        const previewUrl = window.pendingPhotoDataUrl || '';
+        coverOptions.innerHTML = previewUrl
+            ? `<div class="flex-1 cursor-pointer rounded-lg overflow-hidden ring-2 ring-green-500">
+                 <img src="${previewUrl}" class="w-full aspect-square object-cover">
+                 <p class="text-center text-xs text-green-400 py-1">Your Photo ✓</p>
+               </div>`
+            : '<p class="text-slate-400 text-sm">Photo ready</p>';
+        form.elements['use_own_photo'].value = '1';
+        form.elements['use_discogs_image'].value = '';
+    } else {
+        showPhotoUpload();
+    }
+
+    // Fetch Discogs low-ask price for modal display
+    const priceEl = document.getElementById('price-preview');
+    if (releaseInfo.discogs_id) {
+        priceEl.textContent = 'Fetching…';
+        fetch('/add/price-preview/' + releaseInfo.discogs_id)
+            .then(r => r.json())
+            .then(data => {
+                if (data.price && data.price > 0) {
+                    priceEl.textContent = (data.currency || '$') + ' ' + parseFloat(data.price).toFixed(2);
+                } else {
+                    priceEl.textContent = 'No listings';
+                }
+            })
+            .catch(() => { priceEl.textContent = '—'; });
+    } else {
+        priceEl.textContent = '—';
+    }
+
+    const modal = document.getElementById('confirmation-modal');
+    modal.classList.remove('hidden');
+    modal.querySelector('.bg-slate-800').scrollTop = 0;
+}
+
+function selectCover(index, url) {
+    const form = document.getElementById('confirmation-form');
+    // Update ring/label on all options
+    document.querySelectorAll('#cover-options > div').forEach((el, i) => {
+        const label = el.querySelector('p');
+        if (i === index) {
+            el.className = el.className.replace('ring-1 ring-slate-600', 'ring-2 ring-green-500').replace('hover:ring-blue-400', '');
+            el.classList.add('ring-2', 'ring-green-500');
+            el.classList.remove('ring-1', 'ring-slate-600', 'hover:ring-blue-400');
+            if (label) { label.className = 'text-center text-xs py-1 text-green-400'; label.textContent = 'Selected ✓'; }
+        } else {
+            el.classList.remove('ring-2', 'ring-green-500');
+            el.classList.add('ring-1', 'ring-slate-600', 'hover:ring-blue-400');
+            if (label) { label.className = 'text-center text-xs py-1 text-slate-400'; label.textContent = 'Option ' + (i+1); }
+        }
+    });
+    form.elements['cover_image_url'].value = url;
+    form.elements['use_discogs_image'].value = '1';
+    form.elements['use_own_photo'].value = '';
+}
+
+function confirmCoverChoice(choice) {
+    // kept for own-photo upload button
+    if (choice === 'own') {
+        const input = document.getElementById('own-photo-input');
+        const form = document.getElementById('confirmation-form');
+        if (input.files.length > 0) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const coverOptions = document.getElementById('cover-options');
+                coverOptions.innerHTML = `<div class="flex-1 rounded-lg overflow-hidden ring-2 ring-green-500">
+                    <img src="${e.target.result}" class="w-full aspect-square object-cover">
+                    <p class="text-center text-xs text-green-400 py-1">Your Photo ✓</p>
+                </div>`;
+            };
+            reader.readAsDataURL(file);
+            form.elements['use_own_photo'].value = '1';
+            form.elements['use_discogs_image'].value = '';
+            document.getElementById('photo-upload-container').classList.add('hidden');
+        }
+    }
+}
+
+function showPhotoUpload() {
+    document.getElementById('photo-upload-container').classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('confirmation-modal').classList.add('hidden');
+    pendingCoverData = null;
+
+    document.getElementById('barcode-input').value = '';
+    document.getElementById('photo-input').value = '';
+    document.getElementById('barcode-result').innerHTML = '';
+    document.getElementById('photo-result').innerHTML = '';
+    document.getElementById('discogs-url-input').value = '';
+    document.getElementById('discogs-link-result').innerHTML = '';
+}
+
+// Form submission
+document.getElementById('confirmation-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const form = document.getElementById('confirmation-form');
+    const formData = new FormData(form);
+
+    // Handle own photo upload
+    const ownPhotoInput = document.getElementById('own-photo-input');
+    if (ownPhotoInput && ownPhotoInput.files.length > 0 && formData.get('use_own_photo')) {
+        const photoFormData = new FormData();
+        photoFormData.append('photo', ownPhotoInput.files[0]);
+
+        const photoRes = await fetch('/add/photo', {
+            method: 'POST',
+            body: photoFormData
+        });
+
+        if (photoRes.ok) {
+            const photoData = await photoRes.json();
+            formData.set('temp_photo_path', photoData.release_info.temp_photo_path);
+        }
+    }
+
+    // Convert form data to JSON
+    const data = {
+        artist: formData.get('artist'),
+        title: formData.get('title'),
+        artist_sort: formData.get('artist_sort'),
+        format: formData.get('format'),
+        year: formData.get('year') ? parseInt(formData.get('year')) : null,
+        label: formData.get('label'),
+        catalog_number: formData.get('catalog_number'),
+        upc: formData.get('upc'),
+        genre: formData.get('genre'),
+        discogs_url: formData.get('discogs_url'),
+        discogs_id: formData.get('discogs_id'),
+        cover_image_url: formData.get('cover_image_url'),
+        temp_photo_path: formData.get('temp_photo_path'),
+        shelf_section: formData.get('shelf_section'),
+        entry_mode: formData.get('entry_mode'),
+        notes: formData.get('notes'),
+        needs_review: formData.get('needs_review') ? 1 : 0,
+        use_discogs_image: formData.get('use_discogs_image') ? true : false,
+        use_own_photo: formData.get('use_own_photo') ? true : false,
+        tracklist: JSON.parse(formData.get('tracklist') || '[]')
+    };
+
+    try {
+        const res = await fetch('/add/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+            const shelf = data.shelf_section;
+            if (shelf) localStorage.setItem('lastShelf', shelf);
+            window.location.href = result.redirect;
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+});
+
+document.getElementById('manual-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const fileInput = document.querySelector('input[name="cover_art"]');
+
+    let cover_art_path = null;
+    let cover_source = null;
+
+    if (fileInput && fileInput.files.length > 0) {
+        const photoFormData = new FormData();
+        photoFormData.append('photo', fileInput.files[0]);
+
+        const photoRes = await fetch('/add/photo', {
+            method: 'POST',
+            body: photoFormData
+        });
+
+        if (photoRes.ok) {
+            const photoData = await photoRes.json();
+            const form = document.getElementById('confirmation-form');
+            form.elements['temp_photo_path'].value = photoData.release_info.temp_photo_path;
+        }
+    }
+
+    const data = {
+        artist: formData.get('artist'),
+        title: formData.get('title'),
+        artist_sort: formData.get('artist_sort') || formData.get('artist'),
+        format: formData.get('format'),
+        year: formData.get('year') ? parseInt(formData.get('year')) : null,
+        label: formData.get('label'),
+        catalog_number: formData.get('catalog_number'),
+        upc: '',
+        genre: formData.get('genre'),
+        discogs_url: '',
+        discogs_id: '',
+        shelf_section: formData.get('shelf_section'),
+        entry_mode: 'manual',
+        notes: formData.get('notes'),
+        needs_review: formData.get('needs_review') ? 1 : 0,
+        use_own_photo: fileInput && fileInput.files.length > 0
+    };
+
+    try {
+        const res = await fetch('/add/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+            const shelf = data.shelf_section;
+            if (shelf) localStorage.setItem('lastShelf', shelf);
+            window.location.href = result.redirect;
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+});
+
+// Initialize
+const lastTab = localStorage.getItem('lastAddTab') || 'photo';
+switchTab(lastTab);
+
+// Pre-fill shelf fields with last-used shelf
+const lastShelf = localStorage.getItem('lastShelf');
+if (lastShelf) {
+    document.querySelectorAll('input[name="shelf_section"]').forEach(el => {
+        el.value = lastShelf;
+    });
+}
+</script>
+{% endblock %}

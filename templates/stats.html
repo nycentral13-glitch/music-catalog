@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Collection Statistics - Music-Catalog{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <a href="{{ url_for('index') }}" class="text-blue-400 hover:text-blue-300 mb-4 inline-block">← Back</a>
+    <h1 class="text-4xl font-bold">Collection Statistics</h1>
+</div>
+
+<div class="grid md:grid-cols-3 gap-6 mb-8">
+    <!-- Total Records -->
+    <div class="bg-slate-800 rounded-lg p-6">
+        <div class="text-3xl font-bold text-blue-400 mb-2">{{ stats.total }}</div>
+        <p class="text-slate-400">Total Records</p>
+    </div>
+
+    <!-- With Covers -->
+    <div class="bg-slate-800 rounded-lg p-6">
+        <div class="text-3xl font-bold text-green-400 mb-2">{{ stats.with_covers }}</div>
+        <p class="text-slate-400">With Cover Art</p>
+        <p class="text-sm text-slate-500 mt-2">{{ stats.cover_percentage }}% cataloged</p>
+    </div>
+
+    <!-- Needs Review -->
+    <div class="bg-slate-800 rounded-lg p-6">
+        <div class="text-3xl font-bold text-amber-400 mb-2">{{ stats.needs_review }}</div>
+        <p class="text-slate-400">Flagged for Review</p>
+        {% if stats.needs_review > 0 %}
+        <a href="{{ url_for('review') }}" class="text-sm text-blue-400 hover:text-blue-300 mt-2 inline-block">View →</a>
+        {% endif %}
+    </div>
+
+    <!-- Duplicates -->
+    <div class="bg-slate-800 rounded-lg p-6 md:col-start-1">
+        <div class="text-3xl font-bold text-red-400 mb-2">{{ stats.duplicates }}</div>
+        <p class="text-slate-400">Duplicate Records</p>
+        {% if stats.duplicates > 0 %}
+        <a href="{{ url_for('duplicates') }}" class="text-sm text-blue-400 hover:text-blue-300 mt-2 inline-block">Manage →</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- By Format -->
+{% if stats.by_format %}
+<div class="bg-slate-800 rounded-lg p-8 mb-8">
+    <h2 class="text-2xl font-bold mb-6">By Format</h2>
+
+    <div class="space-y-3">
+        {% for format, count in stats.by_format.items()|sort(reverse=True, attribute='1') %}
+        <div>
+            <div class="flex justify-between mb-1">
+                <span class="font-medium">{{ format }}</span>
+                <span class="text-slate-400">{{ count }}</span>
+            </div>
+            <div class="w-full bg-slate-700 rounded-full h-2">
+                <div
+                    class="bg-blue-600 h-2 rounded-full transition-all"
+                    style="width: {{ (count / stats.total * 100)|round(1) }}%"
+                ></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- By Year -->
+{% if stats.by_year %}
+<div class="bg-slate-800 rounded-lg p-8">
+    <h2 class="text-2xl font-bold mb-6">By Year</h2>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        {% for year, count in stats.by_year.items()|sort %}
+        <div class="text-center">
+            <div class="text-2xl font-bold text-blue-400 mb-1">{{ count }}</div>
+            <div class="text-sm text-slate-400">{{ year }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

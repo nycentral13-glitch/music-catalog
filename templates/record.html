@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}{{ record.artist }} - {{ record.title }} - Music-Catalog{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex justify-between items-center">
+        <a href="{{ url_for('index') }}#record-{{ record.id }}" class="text-blue-400 hover:text-blue-300">← Back to Collection</a>
+        <a href="{{ url_for('add') }}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm">+ Add Another</a>
+    </div>
+
+    {% if browse %}
+    <div class="flex items-center justify-between mt-3 px-4 py-2 bg-slate-800 rounded-lg">
+        <div>
+            {% if prev_id %}
+            <a href="{{ url_for('view_record', record_id=prev_id, browse=browse) }}"
+               class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-sm transition">
+                ← Prev
+            </a>
+            {% else %}
+            <span class="px-3 py-1 text-slate-600 text-sm">← Prev</span>
+            {% endif %}
+        </div>
+        <span class="text-slate-400 text-sm">Browsing: <span class="text-white font-medium">{{ browse_label }}</span></span>
+        <div>
+            {% if next_id %}
+            <a href="{{ url_for('view_record', record_id=next_id, browse=browse) }}"
+               class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-sm transition">
+                Next →
+            </a>
+            {% else %}
+            <span class="px-3 py-1 text-slate-600 text-sm">Next →</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Cover + right column, right column height-locked to cover -->
+<div class="grid md:grid-cols-2 gap-8 mb-8 md:items-start">
+
+    <!-- Cover Art -->
+    <div>
+        <div id="cover-container" class="bg-slate-800 rounded-lg aspect-square flex items-center justify-center overflow-hidden">
+            {% if record.cover_art_path %}
+            <img
+                src="{{ url_for('serve_cover', filename=record.cover_art_path.split('/')[-1]) }}"
+                alt="{{ record.artist }} - {{ record.title }}"
+                class="w-full h-full object-cover"
+            >
+            {% else %}
+            <div class="text-6xl">🎵</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right column: info + track listing, constrained to cover height -->
+    <div id="right-col" class="flex flex-col overflow-hidden">
+
+        <!-- Artist + Title — no labels -->
+        <div class="mb-0.5">
+            <h1 class="text-2xl font-bold leading-tight">{{ record.artist }}</h1>
+        </div>
+        <div class="mb-1">
+            <h2 class="text-base leading-tight text-slate-300">{{ record.title }}</h2>
+        </div>
+
+        <!-- Status Badges -->
+        {% if record.needs_review or record.duplicate_flag %}
+        <div class="flex gap-2 mb-1 flex-wrap">
+            {% if record.needs_review %}
+            <span class="bg-amber-600 text-amber-100 text-xs px-2 py-0.5 rounded-full">⚠️ Needs Review</span>
+            {% endif %}
+            {% if record.duplicate_flag %}
+            <span class="bg-red-600 text-red-100 text-xs px-2 py-0.5 rounded-full">📋 Duplicate</span>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Compact key details: one horizontal row, smaller -->
+        <div class="flex flex-wrap gap-x-4 gap-y-0.5 text-xs mb-0.5">
+            {% if record.year %}
+            <span><span class="text-slate-500 uppercase tracking-wide">Year </span>{{ record.year }}</span>
+            {% endif %}
+            {% if record.format %}
+            <span><span class="text-slate-500 uppercase tracking-wide">Format </span>{{ record.format }}</span>
+            {% endif %}
+            {% if record.catalog_number %}
+            <span><span class="text-slate-500 uppercase tracking-wide">Cat# </span>{{ record.catalog_number }}</span>
+            {% endif %}
+            {% if record.shelf_section %}
+            <span>
+                <span class="text-slate-500 uppercase tracking-wide">Shelf </span>{{ record.shelf_section }}{% if shelf_position %} · #{{ shelf_position }}{% endif %}
+            </span>
+            {% endif %}
+        </div>
+
+        {% if record.artist_sort %}
+        <div class="text-xs mb-0.5">
+            <span class="text-slate-500 uppercase tracking-wide">Sort Name </span>{{ record.artist_sort }}
+        </div>
+        {% endif %}
+
+        {% if record.genre %}
+        <div class="text-xs mb-0.5">
+            <span class="text-slate-500 uppercase tracking-wide">Genre </span>{{ record.genre }}
+        </div>
+        {% endif %}
+
+        <!-- Label/s — small font, full width -->
+        {% if record.label %}
+        <div class="text-xs mb-1">
+            <span class="text-slate-500 uppercase tracking-wide">Label/s </span>{{ record.label }}
+        </div>
+        {% endif %}
+
+        {% if record.price_updated %}
+        <div class="text-xs mb-0.5">
+            <span class="text-slate-500 uppercase tracking-wide">Market </span>
+            {% if record.price_lowest and record.price_lowest > 0 %}
+                <span class="text-green-400 font-medium">{{ record.price_currency }} {{ "%.2f"|format(record.price_lowest) }}</span>
+                <span class="text-slate-600 ml-1">low asking</span>
+            {% else %}
+                <span class="text-slate-600">No current listings</span>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Divider -->
+        <div class="border-t border-slate-600 mb-1.5 mt-0.5"></div>
+
+        <!-- Track listing — fills remaining space, scrolls -->
+        <div class="flex-1 min-h-0 overflow-y-auto">
+            {% if not tracks and record.discogs_id %}
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Track Listing</span>
+                </div>
+                <form method="POST" action="{{ url_for('fetch_tracks', record_id=record.id) }}" class="mt-2">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                        ↓ Fetch Tracks from Discogs
+                    </button>
+                </form>
+                <p class="text-slate-500 text-xs mt-2">No tracks stored yet.</p>
+            {% elif tracks %}
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Track Listing</span>
+                </div>
+                {% set ns = namespace(current_side='__none__') %}
+                <table class="w-full text-sm">
+                    {% for track in tracks %}
+                        {% if track.position %}
+                            {% set side = track.position[0] if track.position[0].isalpha() else '' %}
+                        {% else %}
+                            {% set side = '' %}
+                        {% endif %}
+                        {% if side != ns.current_side %}
+                            {% set ns.current_side = side %}
+                            {% if side %}
+                            <tr>
+                                <td colspan="3" class="pt-3 pb-0.5 text-xs font-bold uppercase tracking-widest text-blue-400">
+                                    Side {{ side }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% endif %}
+                        {% if track.is_heading %}
+                        <tr>
+                            <td colspan="3" class="pt-3 pb-0.5 text-xs font-bold uppercase tracking-widest text-blue-400">
+                                {{ track.title }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr class="border-t border-slate-700 hover:bg-slate-700 transition">
+                            <td class="py-1 pr-3 text-slate-400 font-mono text-xs w-8 align-top">{{ track.position }}</td>
+                            <td class="py-1 text-slate-100 text-sm">
+                                {{ track.title }}
+                                {% if track.artist %}
+                                <div class="text-xs text-slate-400 mt-0.5">{{ track.artist }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="py-1 pl-3 text-right text-slate-400 font-mono text-xs whitespace-nowrap align-top">{{ track.duration }}</td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </table>
+            {% endif %}
+        </div>
+
+    </div><!-- end right-col -->
+</div>
+
+<!-- Additional Info — condensed single line -->
+<div class="bg-slate-800 rounded-lg px-4 py-2 mb-8 text-xs text-slate-500 flex flex-wrap gap-x-4 gap-y-0.5 items-center justify-center">
+    {% if record.upc %}<span><span class="uppercase tracking-wide">UPC </span><span class="font-mono text-slate-400">{{ record.upc }}</span></span>{% endif %}
+    {% if record.entry_mode %}<span><span class="uppercase tracking-wide">Entry </span><span class="text-slate-400 capitalize">{{ record.entry_mode }}</span></span>{% endif %}
+    {% if record.cover_source %}<span><span class="uppercase tracking-wide">Cover </span><span class="text-slate-400 capitalize">{{ record.cover_source.replace('_', ' ') }}</span></span>{% endif %}
+    <span><span class="uppercase tracking-wide">Added </span><span class="text-slate-400">{{ record.date_added[:10] if record.date_added else 'N/A' }}</span></span>
+    {% if record.notes %}<span class="w-full text-slate-400 italic">{{ record.notes }}</span>{% endif %}
+</div>
+
+<!-- Bottom Actions -->
+<div class="flex flex-wrap gap-3">
+    <a
+        href="{{ url_for('edit_record', record_id=record.id, browse=browse) if browse else url_for('edit_record', record_id=record.id) }}"
+        class="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-center"
+    >
+        ✏️ Edit
+    </a>
+    {% if record.discogs_url %}
+    <a
+        href="{{ record.discogs_url }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex-1 px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition font-medium text-center"
+    >
+        🔗 View on Discogs
+    </a>
+    {% endif %}
+    <form method="POST" action="{{ url_for('delete_record_route', record_id=record.id) }}" class="flex-1" onsubmit="return confirm('Delete this record?');">
+        <button
+            type="submit"
+            class="w-full px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+        >
+            🗑️ Delete
+        </button>
+    </form>
+</div>
+
+<script>
+function matchCoverHeight() {
+    const cover = document.getElementById('cover-container');
+    const right = document.getElementById('right-col');
+    if (!cover || !right) return;
+    if (window.innerWidth >= 768) {
+        right.style.height = cover.offsetHeight + 'px';
+    } else {
+        right.style.height = '';
+    }
+}
+window.addEventListener('load', matchCoverHeight);
+window.addEventListener('resize', matchCoverHeight);
+// Also run immediately in case load already fired
+matchCoverHeight();
+</script>
+{% endblock %}

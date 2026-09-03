@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Library</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 16px;
+        }
+        h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #fff;
+        }
+        .subtitle {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+        input[type="search"] {
+            width: 100%;
+            padding: 8px 12px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            outline: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        th {
+            text-align: left;
+            color: #64748b;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 6px 8px;
+            border-bottom: 1px solid #1e293b;
+        }
+        tr.record { border-bottom: 1px solid #1e293b; }
+        tr.record:last-child { border-bottom: none; }
+        td {
+            padding: 7px 6px;
+            vertical-align: top;
+            line-height: 1.3;
+        }
+        td.artist { color: #c084fc; font-weight: 500; width: 46%; }
+        td.title-vinyl { color: #e2e8f0; width: 54%; }
+        td.title-cd { color: #67e8f9; width: 54%; }
+        td.title-other { color: #94a3b8; width: 54%; }
+        .legend {
+            display: flex;
+            gap: 16px;
+            font-size: 0.72rem;
+            color: #64748b;
+            margin-bottom: 12px;
+        }
+        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+        .dot-vinyl { background: #e2e8f0; }
+        .dot-cd { background: #67e8f9; }
+        .dot-other { background: #94a3b8; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+        <h1>My Library</h1>
+        <div style="display:flex;gap:6px">
+            <button id="gen-btn" onclick="generateList()" style="font-size:.75rem;background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;">⬇ HTML</button>
+            <button id="pdf-btn" onclick="generatePdf()" style="font-size:.75rem;background:#0891b2;color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;">⬇ PDF</button>
+            <button id="pdf-covers-btn" onclick="generatePdfCovers()" style="font-size:.75rem;background:#059669;color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;">⬇ PDF + Covers</button>
+        </div>
+    </div>
+    <p class="subtitle">{{ records|length }} records</p>
+    <p id="gen-status" style="font-size:.75rem;color:#94a3b8;margin-bottom:8px;min-height:1rem"></p>
+
+    <div class="legend">
+        <span><span class="dot dot-vinyl"></span>Vinyl</span>
+        <span><span class="dot dot-cd"></span>CD</span>
+        <span><span class="dot dot-other"></span>Other</span>
+    </div>
+
+    <input type="search" id="search" placeholder="Search artist or title…" oninput="filterList()">
+
+    <table>
+        <thead>
+            <tr>
+                <th>Artist</th>
+                <th>Title</th>
+            </tr>
+        </thead>
+        <tbody id="list">
+            {% for r in records %}
+            {% set fmt = (r['format'] or '').lower() %}
+            {% if 'cd' in fmt %}
+                {% set cls = 'title-cd' %}
+            {% elif fmt == '' %}
+                {% set cls = 'title-other' %}
+            {% else %}
+                {% set cls = 'title-vinyl' %}
+            {% endif %}
+            <tr class="record" data-search="{{ (r['artist'] ~ ' ' ~ r['title'])|lower }}">
+                <td class="artist">{{ r['artist'] }}</td>
+                <td class="{{ cls }}">{{ r['title'] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        function filterList() {
+            const q = document.getElementById('search').value.toLowerCase();
+            document.querySelectorAll('tr.record').forEach(row => {
+                row.classList.toggle('hidden', q && !row.dataset.search.includes(q));
+            });
+        }
+
+        async function generatePdf() {
+            const btn = document.getElementById('pdf-btn');
+            const status = document.getElementById('gen-status');
+            btn.textContent = '⏳ Building…';
+            btn.disabled = true;
+            const res = await fetch('/generate-phone-pdf', { method: 'POST' });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'phone-list.pdf'; a.click();
+                btn.textContent = '✅ Downloaded';
+                status.textContent = 'PDF downloaded — AirDrop or email it to your phone.';
+                setTimeout(() => { btn.textContent = '⬇ PDF'; btn.disabled = false; }, 4000);
+            } else {
+                btn.textContent = '❌ Error'; btn.disabled = false;
+            }
+        }
+
+        async function generatePdfCovers() {
+            const btn = document.getElementById('pdf-covers-btn');
+            const status = document.getElementById('gen-status');
+            btn.textContent = '⏳ Building… (~30s)';
+            btn.disabled = true;
+            status.textContent = 'Generating cover thumbnails — this takes about 30 seconds…';
+            const res = await fetch('/generate-phone-pdf-covers', { method: 'POST' });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'phone-list-covers.pdf'; a.click();
+                btn.textContent = '✅ Downloaded';
+                status.textContent = 'PDF with covers downloaded — AirDrop or email it to your phone.';
+                setTimeout(() => { btn.textContent = '⬇ PDF + Covers'; btn.disabled = false; status.textContent = ''; }, 5000);
+            } else {
+                btn.textContent = '❌ Error'; btn.disabled = false; status.textContent = '';
+            }
+        }
+
+        async function generateList() {
+            const btn = document.getElementById('gen-btn');
+            const status = document.getElementById('gen-status');
+            btn.textContent = '⏳ Generating…';
+            btn.disabled = true;
+            const res = await fetch('/generate-phone-list', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                btn.textContent = '✅ Saved';
+                status.textContent = 'Saved as phone-list.html in your music-catalog folder — AirDrop it to your phone.';
+                setTimeout(() => { btn.textContent = '⬇ Save for Phone'; btn.disabled = false; }, 4000);
+            } else {
+                btn.textContent = '❌ Error';
+                status.textContent = data.error;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
