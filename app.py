@@ -1063,7 +1063,7 @@ def generate_sort_order():
             shelf_section = first['shelf_section']
 
             # Check: how many real records remain on this shelf AFTER the divider position?
-            # If fewer than 3, push divider to the start of the next shelf instead.
+            # If fewer than 5, push divider AND those trailing records to the next shelf.
             conn_chk = database.get_db()
             cur_chk = conn_chk.cursor()
             trailing = cur_chk.execute("""
@@ -1074,32 +1074,29 @@ def generate_sort_order():
                   AND duplicate_flag = 0
             """, (shelf_section, divider_sort)).fetchone()['cnt']
 
-            if trailing < 3:
-                # Before pushing, check if any of those trailing records are the same letter.
-                # If they are, the divider belongs before them — don't push.
-                same_letter_trailing = cur_chk.execute("""
-                    SELECT COUNT(*) as cnt FROM collection
+            if trailing < 5 and letter != 'Z':
+                shelf_num = int(shelf_section.replace('Shelf ', '')) if shelf_section else 1
+                next_shelf = f'Shelf {shelf_num + 1}'
+                next_first = cur_chk.execute("""
+                    SELECT sort_order FROM collection
                     WHERE shelf_section = ?
-                      AND sort_order > ?
                       AND (notes != 'alpha-divider' OR notes IS NULL)
                       AND duplicate_flag = 0
-                      AND UPPER(SUBSTR(COALESCE(NULLIF(artist_sort,''), artist), 1, 1)) = ?
-                """, (shelf_section, divider_sort, letter)).fetchone()['cnt']
-
-                if same_letter_trailing == 0:
-                    # No same-letter records trailing — safe to push to next shelf
-                    shelf_num = int(shelf_section.replace('Shelf ', '')) if shelf_section else 1
-                    next_shelf = f'Shelf {shelf_num + 1}'
-                    next_first = cur_chk.execute("""
-                        SELECT sort_order FROM collection
+                    ORDER BY sort_order ASC LIMIT 1
+                """, (next_shelf,)).fetchone()
+                if next_first:
+                    # Move trailing records on this shelf to the next shelf too
+                    cur_chk.execute("""
+                        UPDATE collection
+                        SET shelf_section = ?
                         WHERE shelf_section = ?
+                          AND sort_order > ?
                           AND (notes != 'alpha-divider' OR notes IS NULL)
                           AND duplicate_flag = 0
-                        ORDER BY sort_order ASC LIMIT 1
-                    """, (next_shelf,)).fetchone()
-                    if next_first:
-                        divider_sort = max(1, next_first['sort_order'] - 50)
-                        shelf_section = next_shelf
+                    """, (next_shelf, shelf_section, divider_sort))
+                    conn_chk.commit()
+                    divider_sort = max(1, next_first['sort_order'] - 50)
+                    shelf_section = next_shelf
             conn_chk.close()
 
             divider_updates.append((first['id'], divider_sort, shelf_section, div['artist']))
