@@ -234,14 +234,24 @@ function renderShelfView() {
 
     sortedShelves.forEach(shelfNum => {
         const records = shelves.get(shelfNum);
+        // Build range label from first/last artist sort on this shelf
+        const nonDupe = records.filter(r => r.dataset.isDupe !== 'true');
+        const rangeRecords = nonDupe.length > 0 ? nonDupe : records;
+        const firstSort = (rangeRecords[0]?.dataset.artistSort || '').toUpperCase().replace(/^THE\s+/, '').trim().slice(0, 3);
+        const lastSort  = (rangeRecords[rangeRecords.length - 1]?.dataset.artistSort || '').toUpperCase().replace(/^THE\s+/, '').trim().slice(0, 3);
+        const rangeStr  = shelfNum === '1'
+                        ? (lastSort ? ` (– ${lastSort})` : '')
+                        : (firstSort && lastSort && firstSort !== lastSort) ? ` (${firstSort} – ${lastSort})` :
+                          firstSort ? ` (${firstSort})` : '';
+
         const label = shelfNum === '999' ? 'Your Collection' :
-                      shelfNum === '14'  ? 'Shelf 13 — Kids' :
-                      shelfNum === '15'  ? 'Shelf 13 — Jazz' :
-                      shelfNum === '16'  ? 'Shelf 13 — Classical' :
-                      shelfNum === '17'  ? 'Shelf 17 — 10 Inch' :
-                      shelfNum === '18'  ? 'Shelf 13 — Easy Listening' :
-                      shelfNum === '19'  ? 'Shelf 13 — Other' :
-                      `Shelf ${shelfNum}`;
+                      shelfNum === '14'  ? `Shelf 13 — Kids${rangeStr}` :
+                      shelfNum === '15'  ? `Shelf 13 — Jazz${rangeStr}` :
+                      shelfNum === '16'  ? `Shelf 13 — Classical${rangeStr}` :
+                      shelfNum === '17'  ? `Shelf 17 — 10 Inch${rangeStr}` :
+                      shelfNum === '18'  ? `Shelf 13 — Easy Listening${rangeStr}` :
+                      shelfNum === '19'  ? `Shelf 13 — Other${rangeStr}` :
+                      `Shelf ${shelfNum}${rangeStr}`;
 
         const section = document.createElement('div');
 
