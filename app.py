@@ -1044,7 +1044,7 @@ def generate_sort_order():
             WHERE (notes != 'alpha-divider' OR notes IS NULL)
               AND duplicate_flag = 0
               AND sort_order IS NOT NULL
-              AND UPPER(SUBSTR(artist_sort, 1, 1)) = ?
+              AND UPPER(SUBSTR(COALESCE(NULLIF(artist_sort,''), artist), 1, 1)) = ?
               AND (genre IS NULL
                    OR (LOWER(genre) NOT LIKE '%children%'
                    AND LOWER(genre) NOT LIKE '%classical%'
@@ -1060,7 +1060,37 @@ def generate_sort_order():
 
         if first:
             divider_sort = max(1, first['sort_order'] - 50)
-            divider_updates.append((first['id'], divider_sort, first['shelf_section'], div['artist']))
+            shelf_section = first['shelf_section']
+
+            # Check: how many real records remain on this shelf AFTER the divider position?
+            # If fewer than 3, push divider to the start of the next shelf instead.
+            conn_chk = database.get_db()
+            cur_chk = conn_chk.cursor()
+            trailing = cur_chk.execute("""
+                SELECT COUNT(*) as cnt FROM collection
+                WHERE shelf_section = ?
+                  AND sort_order > ?
+                  AND (notes != 'alpha-divider' OR notes IS NULL)
+                  AND duplicate_flag = 0
+            """, (shelf_section, divider_sort)).fetchone()['cnt']
+
+            if trailing < 3:
+                # Find the first record on the next shelf and anchor divider just before it
+                shelf_num = int(shelf_section.replace('Shelf ', '')) if shelf_section else 1
+                next_shelf = f'Shelf {shelf_num + 1}'
+                next_first = cur_chk.execute("""
+                    SELECT sort_order FROM collection
+                    WHERE shelf_section = ?
+                      AND (notes != 'alpha-divider' OR notes IS NULL)
+                      AND duplicate_flag = 0
+                    ORDER BY sort_order ASC LIMIT 1
+                """, (next_shelf,)).fetchone()
+                if next_first:
+                    divider_sort = max(1, next_first['sort_order'] - 50)
+                    shelf_section = next_shelf
+            conn_chk.close()
+
+            divider_updates.append((first['id'], divider_sort, shelf_section, div['artist']))
 
     # Apply divider updates
     if divider_updates:
