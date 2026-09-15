@@ -1075,19 +1075,31 @@ def generate_sort_order():
             """, (shelf_section, divider_sort)).fetchone()['cnt']
 
             if trailing < 3:
-                # Find the first record on the next shelf and anchor divider just before it
-                shelf_num = int(shelf_section.replace('Shelf ', '')) if shelf_section else 1
-                next_shelf = f'Shelf {shelf_num + 1}'
-                next_first = cur_chk.execute("""
-                    SELECT sort_order FROM collection
+                # Before pushing, check if any of those trailing records are the same letter.
+                # If they are, the divider belongs before them — don't push.
+                same_letter_trailing = cur_chk.execute("""
+                    SELECT COUNT(*) as cnt FROM collection
                     WHERE shelf_section = ?
+                      AND sort_order > ?
                       AND (notes != 'alpha-divider' OR notes IS NULL)
                       AND duplicate_flag = 0
-                    ORDER BY sort_order ASC LIMIT 1
-                """, (next_shelf,)).fetchone()
-                if next_first:
-                    divider_sort = max(1, next_first['sort_order'] - 50)
-                    shelf_section = next_shelf
+                      AND UPPER(SUBSTR(COALESCE(NULLIF(artist_sort,''), artist), 1, 1)) = ?
+                """, (shelf_section, divider_sort, letter)).fetchone()['cnt']
+
+                if same_letter_trailing == 0:
+                    # No same-letter records trailing — safe to push to next shelf
+                    shelf_num = int(shelf_section.replace('Shelf ', '')) if shelf_section else 1
+                    next_shelf = f'Shelf {shelf_num + 1}'
+                    next_first = cur_chk.execute("""
+                        SELECT sort_order FROM collection
+                        WHERE shelf_section = ?
+                          AND (notes != 'alpha-divider' OR notes IS NULL)
+                          AND duplicate_flag = 0
+                        ORDER BY sort_order ASC LIMIT 1
+                    """, (next_shelf,)).fetchone()
+                    if next_first:
+                        divider_sort = max(1, next_first['sort_order'] - 50)
+                        shelf_section = next_shelf
             conn_chk.close()
 
             divider_updates.append((first['id'], divider_sort, shelf_section, div['artist']))

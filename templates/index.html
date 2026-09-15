@@ -215,9 +215,10 @@ function renderShelfView() {
     const sv = document.getElementById('shelf-view');
     sv.innerHTML = '';
 
-    // Collect visible records from the grid, already sorted
+    // Collect visible records from the grid, sorted by sort_order
     const items = Array.from(document.querySelectorAll('.record-item'))
-        .filter(item => item.style.display !== 'none');
+        .filter(item => item.style.display !== 'none')
+        .sort((a, b) => parseInt(a.dataset.sortOrder || '999999') - parseInt(b.dataset.sortOrder || '999999'));
 
     // Group by shelf number in order
     const shelves = new Map();
