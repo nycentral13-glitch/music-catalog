@@ -1066,13 +1066,15 @@ def generate_sort_order():
             # If fewer than 5, push divider AND those trailing records to the next shelf.
             conn_chk = database.get_db()
             cur_chk = conn_chk.cursor()
-            trailing = cur_chk.execute("""
-                SELECT COUNT(*) as cnt FROM collection
+            trailing_row = cur_chk.execute("""
+                SELECT COUNT(*) as cnt, MIN(sort_order) as min_sort FROM collection
                 WHERE shelf_section = ?
                   AND sort_order > ?
                   AND (notes != 'alpha-divider' OR notes IS NULL)
                   AND duplicate_flag = 0
-            """, (shelf_section, divider_sort)).fetchone()['cnt']
+            """, (shelf_section, divider_sort)).fetchone()
+            trailing = trailing_row['cnt']
+            min_trailing_sort = trailing_row['min_sort']
 
             if trailing < 5 and letter != 'Z':
                 shelf_num = int(shelf_section.replace('Shelf ', '')) if shelf_section else 1
@@ -1095,7 +1097,8 @@ def generate_sort_order():
                           AND duplicate_flag = 0
                     """, (next_shelf, shelf_section, divider_sort))
                     conn_chk.commit()
-                    divider_sort = max(1, next_first['sort_order'] - 50)
+                    # Place divider just before the first trailing record (not before next shelf's first)
+                    divider_sort = max(1, min_trailing_sort - 10)
                     shelf_section = next_shelf
             conn_chk.close()
 
