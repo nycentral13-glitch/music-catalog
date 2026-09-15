@@ -1,0 +1,9 @@
+{
+  "name": "Music Catalog",
+  "short_name": "Catalog",
+  "display": "standalone",
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "any"
+}
