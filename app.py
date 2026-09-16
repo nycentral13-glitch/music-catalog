@@ -28,6 +28,7 @@ app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'covers')
+THUMB_FOLDER  = os.path.join(os.path.dirname(__file__), 'covers_thumb')
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -1258,16 +1259,30 @@ def shelf_planner_apply():
 
 @app.route('/covers/<filename>')
 def serve_cover(filename):
-    """Serve cover art images"""
+    """Serve full-size cover art images"""
     safe_filename = secure_filename(filename)
     filepath = os.path.join(UPLOAD_FOLDER, safe_filename)
-
     if os.path.exists(filepath):
         response = send_file(filepath)
         response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
         return response
+    return '', 404
 
-    # Return placeholder
+@app.route('/covers/thumb/<filename>')
+def serve_cover_thumb(filename):
+    """Serve thumbnail cover art (falls back to full-size if thumb not yet generated)"""
+    safe_filename = secure_filename(filename)
+    thumb_path = os.path.join(THUMB_FOLDER, safe_filename)
+    if os.path.exists(thumb_path):
+        response = send_file(thumb_path)
+        response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        return response
+    # Fallback to full-size while thumbs are being generated
+    full_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+    if os.path.exists(full_path):
+        response = send_file(full_path)
+        response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        return response
     return '', 404
 
 # ============================================================================
