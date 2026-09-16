@@ -109,109 +109,127 @@
     </table>
 </div>
 
-<!-- Grid (hidden — shelf view is the only display) -->
-<div id="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8 hidden">
-    {% for record in records %}
-    <a
-        href="{{ url_for('view_record', record_id=record.id) }}"
-        class="group cursor-pointer record-item"
-        id="record-{{ record.id }}"
-        onclick="saveFilterState()"
-        data-artist="{{ record.artist.lower() }}"
-        data-artist-sort="{{ (record.artist_sort or record.artist).lower() }}"
-        data-title="{{ record.title.lower() }}"
-        data-label="{{ (record.label or '').lower() }}"
-        data-format="{{ record.format or '' }}"
-        data-genre="{{ record.genre or '' }}"
-        data-notes="{{ (record.notes or '').lower() }}"
-        data-is-dupe="{{ 'true' if record.notes and 'copies' in record.notes.lower() else 'false' }}"
-        data-year="{{ record.year or 0 }}"
-        data-date="{{ record.date_added or '' }}"
-        data-sort-order="{{ record.sort_order or 999999 }}"
-        data-shelf-num="{{ record.shelf_section.replace('Shelf ', '') if record.shelf_section else 999 }}"
-        data-record-id="{{ record.id }}"
-        {% set sp = shelf_positions.get(record.id) %}
-        data-shelf-display="{{ sp.shelf ~ ' · #' ~ sp.pos ~ ' of ' ~ sp.total if sp else '' }}"
-        data-price-low="{{ record.price_lowest or '' }}"
-        data-price-high="{{ record.price_highest or '' }}"
-    >
-        <div class="aspect-square bg-slate-800 rounded-lg overflow-hidden mb-3 relative">
-            {% if record.cover_art_path %}
-            <img
-                src="{{ url_for('serve_cover_thumb', filename=record.cover_art_path.split('/')[-1]) }}"
-                data-full-src="{{ url_for('serve_cover', filename=record.cover_art_path.split('/')[-1]) }}"
-                alt="{{ record.artist }} - {{ record.title }}"
-                class="w-full h-full object-cover group-hover:opacity-75 transition"
-                loading="lazy"
-                onclick="event.preventDefault(); event.stopPropagation(); openRecordLightbox(this.closest('.record-item'))"
-                style="cursor:zoom-in"
-            >
-            {% else %}
-            <div class="w-full h-full flex items-center justify-center bg-slate-700">
-                <span class="text-4xl">🎵</span>
-            </div>
-            {% endif %}
-
-            <!-- Badges -->
-            <div class="absolute top-2 right-2 flex gap-1">
-                {% if record.needs_review %}
-                <span class="bg-amber-600 text-xs px-2 py-1 rounded">Review</span>
-                {% endif %}
-                {% if record.duplicate_flag %}
-                <span class="bg-red-600 text-xs px-2 py-1 rounded">Duplicate</span>
-                {% endif %}
-            </div>
-        </div>
-
-        <div>
-            <p class="font-medium text-sm truncate group-hover:text-blue-400 transition">
-                {{ record.artist }}
-            </p>
-            {% if record.artist_sort %}
-            <p class="text-xs text-slate-600 truncate">
-                {{ record.artist_sort }}
-            </p>
-            {% endif %}
-            <p class="text-xs text-slate-400 truncate">
-                {{ record.title }}
-            </p>
-            {% if record.year %}
-            <p class="text-xs text-slate-500">
-                {{ record.year }}
-                {% if record.format %} • {{ record.format }}{% endif %}
-            </p>
-            {% endif %}
-            <div class="flex items-center justify-between gap-1 mt-0.5">
-                {% if record.price_lowest and record.price_lowest > 0 %}
-                <span class="text-xs text-green-500 font-mono">
-                    ${{ "%.0f"|format(record.price_lowest) }}{% if record.price_highest and record.price_highest > 0 %} – ${{ "%.0f"|format(record.price_highest) }}{% endif %}
-                </span>
-                {% else %}
-                <span></span>
-                {% endif %}
-                {% set sp = shelf_positions.get(record.id) %}
-                {% if sp %}
-                <span class="text-xs text-red-500 whitespace-nowrap">{{ sp.shelf }} #{{ sp.pos }}/{{ sp.total }}</span>
-                {% endif %}
-            </div>
-        </div>
-    </a>
-    {% endfor %}
+<!-- Grid populated via JS (hidden — shelf view is the primary display) -->
+<div id="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8 hidden"></div>
+<div id="records-loading" class="text-center py-16">
+    <p class="text-slate-400 text-sm animate-pulse">Loading collection…</p>
 </div>
-
-{% if not records %}
-<div class="text-center py-16">
-    <p class="text-slate-400 text-lg mb-4">No records yet</p>
-    <a href="{{ url_for('add') }}" class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
-        Add your first record
-    </a>
-</div>
-{% endif %}
 
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 
 <script>
 let allRecords = [];
+
+// ---- Progressive record loading ----
+function esc(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildCard(r) {
+    const a = document.createElement('a');
+    a.href = `/record/${r.id}`;
+    a.className = 'group cursor-pointer record-item';
+    a.id = `record-${r.id}`;
+    a.onclick = saveFilterState;
+
+    const notesLower  = (r.notes  || '').toLowerCase();
+    const isDupe      = notesLower.includes('copies') ? 'true' : 'false';
+    const shelfNum    = r.shelf_section ? r.shelf_section.replace('Shelf ', '') : '999';
+
+    Object.assign(a.dataset, {
+        artist:       (r.artist      || '').toLowerCase(),
+        artistSort:   (r.artist_sort || r.artist || '').toLowerCase(),
+        title:        (r.title       || '').toLowerCase(),
+        label:        (r.label       || '').toLowerCase(),
+        format:       r.format       || '',
+        genre:        r.genre        || '',
+        notes:        notesLower,
+        isDupe:       isDupe,
+        year:         r.year         || 0,
+        date:         r.date_added   || '',
+        sortOrder:    r.sort_order   || 999999,
+        shelfNum:     shelfNum,
+        recordId:     r.id,
+        shelfDisplay: r.shelf_pos ? `${r.shelf_section} · #${r.shelf_pos} of ${r.shelf_total}` : '',
+        priceLow:     r.price_lowest  || '',
+        priceHigh:    r.price_highest || '',
+    });
+
+    const coverHtml = r.cover_filename
+        ? `<img src="/covers/thumb/${r.cover_filename}"
+                data-full-src="/covers/${r.cover_filename}"
+                alt="${esc(r.artist)} - ${esc(r.title)}"
+                class="w-full h-full object-cover group-hover:opacity-75 transition"
+                loading="lazy"
+                onclick="event.preventDefault();event.stopPropagation();openRecordLightbox(this.closest('.record-item'))"
+                style="cursor:zoom-in">`
+        : `<div class="w-full h-full flex items-center justify-center bg-slate-700"><span class="text-4xl">🎵</span></div>`;
+
+    const reviewBadge = r.needs_review   ? `<span class="bg-amber-600 text-xs px-2 py-1 rounded">Review</span>`    : '';
+    const dupeBadge   = r.duplicate_flag ? `<span class="bg-red-600 text-xs px-2 py-1 rounded">Duplicate</span>` : '';
+
+    const priceHtml = r.price_lowest && r.price_lowest > 0
+        ? `<span class="text-xs text-green-500 font-mono">$${Math.round(r.price_lowest)}${r.price_highest && r.price_highest > 0 ? ' – $' + Math.round(r.price_highest) : ''}</span>`
+        : '<span></span>';
+
+    const posHtml        = r.shelf_pos   ? `<span class="text-xs text-red-500 whitespace-nowrap">${esc(r.shelf_section)} #${r.shelf_pos}/${r.shelf_total}</span>` : '';
+    const artistSortHtml = r.artist_sort ? `<p class="text-xs text-slate-600 truncate">${esc(r.artist_sort)}</p>` : '';
+    const yearHtml       = r.year        ? `<p class="text-xs text-slate-500">${r.year}${r.format ? ' • ' + esc(r.format) : ''}</p>` : '';
+
+    a.innerHTML = `
+        <div class="aspect-square bg-slate-800 rounded-lg overflow-hidden mb-3 relative">
+            ${coverHtml}
+            <div class="absolute top-2 right-2 flex gap-1">${reviewBadge}${dupeBadge}</div>
+        </div>
+        <div>
+            <p class="font-medium text-sm truncate group-hover:text-blue-400 transition">${esc(r.artist)}</p>
+            ${artistSortHtml}
+            <p class="text-xs text-slate-400 truncate">${esc(r.title)}</p>
+            ${yearHtml}
+            <div class="flex items-center justify-between gap-1 mt-0.5">${priceHtml}${posHtml}</div>
+        </div>`;
+    return a;
+}
+
+const _loadedIds = new Set();
+function appendRecords(records) {
+    const grid = document.getElementById('grid');
+    const frag = document.createDocumentFragment();
+    records.forEach(r => {
+        if (_loadedIds.has(r.id)) return;
+        _loadedIds.add(r.id);
+        frag.appendChild(buildCard(r));
+    });
+    grid.appendChild(frag);
+}
+
+async function initRecords() {
+    // Phase 1: load shelves 1 & 2 — user sees content immediately
+    try {
+        const phase1 = await fetch('/api/records?shelves=1,2').then(r => r.json());
+        appendRecords(phase1);
+        document.getElementById('records-loading').style.display = 'none';
+        restoreFilterState();
+        setView(currentView);
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#record-')) {
+            const el = document.querySelector(hash);
+            if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+        }
+    } catch(e) { console.error('Phase 1 load failed:', e); }
+
+    // Phase 2: remaining records in background
+    try {
+        const phase2 = await fetch('/api/records').then(r => r.json());
+        const hadFilter = !!document.getElementById('search').value ||
+                          activeShelf ||
+                          document.querySelector('.filter-btn.bg-blue-600');
+        appendRecords(phase2); // skips already-loaded IDs
+        filterAndSort();
+        if (currentView === 'shelf') renderShelfView();
+    } catch(e) { console.error('Phase 2 load failed:', e); }
+}
 
 function renderShelfView() {
     const sv = document.getElementById('shelf-view');
@@ -631,14 +649,8 @@ function restoreFilterState() {
     filterAndSort();
 }
 
-// Restore on load
-restoreFilterState();
-setView(currentView);
-const hash = window.location.hash;
-if (hash && hash.startsWith('#record-')) {
-    const el = document.querySelector(hash);
-    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
-}
+// Records load progressively — initRecords() handles init sequence
+initRecords();
 </script>
 
 <style>

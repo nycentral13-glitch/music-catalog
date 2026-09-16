@@ -91,12 +91,17 @@ with app.app_context():
 @app.route('/')
 def index():
     """Browse collection with search and filter"""
-    records = database.get_all_records()
     formats = database.get_all_formats()
-    stats = database.get_collection_stats()
+    stats   = database.get_collection_stats()
+    return render_template('index.html', formats=formats, stats=stats)
 
-    # Build shelf position lookup: {record_id: {'shelf': 'Shelf 1', 'pos': 5, 'total': 86}}
-    # Group non-duplicate records by shelf_section, sorted by sort_order, and assign position.
+
+@app.route('/api/records')
+def api_records():
+    """Return all records as JSON with shelf positions. Optional ?shelves=1,2 to filter."""
+    records = database.get_all_records()
+
+    # Build shelf position lookup
     shelf_groups = {}
     for r in records:
         shelf = r['shelf_section']
@@ -104,18 +109,44 @@ def index():
             shelf_groups.setdefault(shelf, []).append((r['sort_order'], r['id']))
     shelf_positions = {}
     for shelf, entries in shelf_groups.items():
-        entries.sort()  # sort by sort_order
+        entries.sort()
         total = len(entries)
-        for pos, (sort_num, rec_id) in enumerate(entries, start=1):
-            shelf_positions[rec_id] = {'shelf': shelf, 'pos': pos, 'total': total}
+        for pos, (_, rec_id) in enumerate(entries, start=1):
+            shelf_positions[rec_id] = {'pos': pos, 'total': total}
 
-    return render_template(
-        'index.html',
-        records=records,
-        formats=formats,
-        stats=stats,
-        shelf_positions=shelf_positions
-    )
+    # Optional shelf filter: ?shelves=1,2
+    shelves_param = request.args.get('shelves')
+    if shelves_param:
+        wanted = {f'Shelf {s.strip()}' for s in shelves_param.split(',')}
+        records = [r for r in records if r['shelf_section'] in wanted]
+
+    result = []
+    for r in records:
+        sp = shelf_positions.get(r['id'])
+        cover_filename = r['cover_art_path'].split('/')[-1] if r['cover_art_path'] else None
+        result.append({
+            'id':            r['id'],
+            'artist':        r['artist'],
+            'artist_sort':   r['artist_sort'],
+            'title':         r['title'],
+            'label':         r['label'],
+            'format':        r['format'],
+            'genre':         r['genre'],
+            'notes':         r['notes'],
+            'year':          r['year'],
+            'date_added':    r['date_added'],
+            'sort_order':    r['sort_order'],
+            'shelf_section': r['shelf_section'],
+            'duplicate_flag':r['duplicate_flag'],
+            'needs_review':  r['needs_review'],
+            'price_lowest':  r['price_lowest'],
+            'price_highest': r['price_highest'],
+            'cover_filename':cover_filename,
+            'shelf_pos':     sp['pos']   if sp else None,
+            'shelf_total':   sp['total'] if sp else None,
+        })
+
+    return jsonify(result)
 
 # ============================================================================
 # ADD RECORD ROUTES
