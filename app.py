@@ -1263,7 +1263,9 @@ def serve_cover(filename):
     filepath = os.path.join(UPLOAD_FOLDER, safe_filename)
 
     if os.path.exists(filepath):
-        return send_file(filepath)
+        response = send_file(filepath)
+        response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        return response
 
     # Return placeholder
     return '', 404

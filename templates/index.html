@@ -141,6 +141,7 @@
                 src="{{ url_for('serve_cover', filename=record.cover_art_path.split('/')[-1]) }}"
                 alt="{{ record.artist }} - {{ record.title }}"
                 class="w-full h-full object-cover group-hover:opacity-75 transition"
+                loading="lazy"
                 onclick="event.preventDefault(); event.stopPropagation(); openRecordLightbox(this.closest('.record-item'))"
                 style="cursor:zoom-in"
             >
