@@ -1,3 +1,42 @@
+/* ============================================================
+   DESIGN TOKENS — change a color here and it updates everywhere
+   ============================================================ */
+:root {
+  /* Accent */
+  --accent:         #9333ea;           /* purple — active shelf btn, search outline */
+  --accent-light:   hsl(280,80%,77%);  /* lighter purple — Re-Sort button idle */
+  --accent-done:    hsl(220,80%,50%);  /* blue — Re-Sort button done state */
+
+  /* Dark slate palette */
+  --bg-base:        #0f172a;  /* page background */
+  --bg-surface:     #1e293b;  /* cards, lightbox, scrollbar track */
+  --bg-raised:      #334155;  /* shelf cards, dividers, track borders */
+  --text-muted-2:   #475569;  /* very muted — track positions, scrollbar */
+  --text-muted:     #64748b;  /* muted — artist sort, secondary labels */
+  --text-secondary: #94a3b8;  /* secondary text, input placeholders */
+  --text-primary:   #e2e8f0;  /* primary text */
+
+  /* Semantic */
+  --color-position: #ef4444;  /* shelf position label — red */
+  --color-price:    #4ade80;  /* price — green */
+  --color-search:   #a78bfa;  /* search match text highlight — violet */
+  --color-vinyl:    #c084fc;  /* vinyl format in list view — purple */
+  --color-cd:       #67e8f9;  /* CD format in list view — cyan */
+
+  /* Lightbox badge colors */
+  --badge-shelf-bg:   #312e81;  --badge-shelf-text: #a5b4fc;
+  --badge-price-bg:   #14532d;  --badge-price-text: #86efac;
+  --badge-label-bg:   #1e3a5f;  --badge-label-text: #93c5fd;
+
+  /* Focus ring */
+  --focus-ring: rgb(59, 130, 246);
+  --focus-glow: rgba(59, 130, 246, 0.1);
+
+  /* Overlays */
+  --overlay-bg:     rgba(0,0,0,0.88);
+  --overlay-shadow: rgba(0,0,0,0.7);
+}
+
 /* Global styles */
 html {
     scroll-behavior: smooth;
@@ -29,7 +68,7 @@ input[type="file"]:focus,
 select:focus,
 textarea:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 0 0 2px rgb(59, 130, 246);
+    box-shadow: 0 0 0 3px var(--focus-glow), 0 0 0 2px var(--focus-ring);
 }
 
 /* Album grid animations */
@@ -91,16 +130,16 @@ img {
 }
 
 ::-webkit-scrollbar-track {
-    background: #1e293b;
+    background: var(--bg-surface);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #475569;
+    background: var(--text-muted-2);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #64748b;
+    background: var(--text-muted);
 }
 
 /* Mobile optimizations */
