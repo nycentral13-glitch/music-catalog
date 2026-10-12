@@ -71,6 +71,11 @@ textarea:focus {
     box-shadow: 0 0 0 3px var(--focus-glow), 0 0 0 2px var(--focus-ring);
 }
 
+button:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
 /* Album grid animations */
 .record-item {
     transition: transform 0.2s ease;
