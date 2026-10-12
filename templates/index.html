@@ -360,7 +360,7 @@ let activeShelf = null;
 function setShelfBtnActive(btn) {
     // Use inline style so it beats Tailwind hover classes regardless of cursor position
     btn.style.backgroundColor = 'var(--accent)';
-    btn.style.color = '#ffffff';
+    btn.style.color = '#fff';
 }
 function clearShelfBtnActive(btn) {
     btn.style.backgroundColor = btn.dataset.defaultBg || '';

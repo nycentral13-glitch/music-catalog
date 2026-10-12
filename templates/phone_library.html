@@ -4,32 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Library</title>
+    <link rel="stylesheet" href="/static/style.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #0f172a;
-            color: #e2e8f0;
+            background: var(--bg-base);
+            color: var(--text-primary);
             padding: 16px;
         }
         h1 {
             font-size: 1.1rem;
             font-weight: 700;
             margin-bottom: 4px;
-            color: #fff;
+            color: var(--text-primary);
         }
         .subtitle {
             font-size: 0.75rem;
-            color: #64748b;
+            color: var(--text-muted);
             margin-bottom: 16px;
         }
         input[type="search"] {
             width: 100%;
             padding: 8px 12px;
-            background: #1e293b;
-            border: 1px solid #334155;
+            background: var(--bg-surface);
+            border: 1px solid var(--bg-raised);
             border-radius: 8px;
-            color: #e2e8f0;
+            color: var(--text-primary);
             font-size: 0.9rem;
             margin-bottom: 12px;
             outline: none;
@@ -41,35 +42,35 @@
         }
         th {
             text-align: left;
-            color: #64748b;
+            color: var(--text-muted);
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             padding: 4px 6px 8px;
-            border-bottom: 1px solid #1e293b;
+            border-bottom: 1px solid var(--bg-surface);
         }
-        tr.record { border-bottom: 1px solid #1e293b; }
+        tr.record { border-bottom: 1px solid var(--bg-surface); }
         tr.record:last-child { border-bottom: none; }
         td {
             padding: 7px 6px;
             vertical-align: top;
             line-height: 1.3;
         }
-        td.artist { color: #c084fc; font-weight: 500; width: 46%; }
-        td.title-vinyl { color: #e2e8f0; width: 54%; }
-        td.title-cd { color: #67e8f9; width: 54%; }
-        td.title-other { color: #94a3b8; width: 54%; }
+        td.artist { color: var(--color-vinyl); font-weight: 500; width: 46%; }
+        td.title-vinyl { color: var(--text-primary); width: 54%; }
+        td.title-cd { color: var(--color-cd); width: 54%; }
+        td.title-other { color: var(--text-secondary); width: 54%; }
         .legend {
             display: flex;
             gap: 16px;
             font-size: 0.72rem;
-            color: #64748b;
+            color: var(--text-muted);
             margin-bottom: 12px;
         }
         .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
-        .dot-vinyl { background: #e2e8f0; }
-        .dot-cd { background: #67e8f9; }
-        .dot-other { background: #94a3b8; }
+        .dot-vinyl { background: var(--text-primary); }
+        .dot-cd { background: var(--color-cd); }
+        .dot-other { background: var(--text-secondary); }
         .hidden { display: none; }
     </style>
 </head>
@@ -77,13 +78,13 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
         <h1>My Library</h1>
         <div style="display:flex;gap:6px">
-            <button id="gen-btn" onclick="generateList()" style="font-size:.75rem;background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;">⬇ HTML</button>
-            <button id="pdf-btn" onclick="generatePdf()" style="font-size:.75rem;background:#0891b2;color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;">⬇ PDF</button>
-            <button id="pdf-covers-btn" onclick="generatePdfCovers()" style="font-size:.75rem;background:#059669;color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;">⬇ PDF + Covers</button>
+            <button id="gen-btn" onclick="generateList()" style="font-size:.75rem;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;">⬇ HTML</button>
+            <button id="pdf-btn" onclick="generatePdf()" style="font-size:.75rem;background:var(--accent-done);color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;">⬇ PDF</button>
+            <button id="pdf-covers-btn" onclick="generatePdfCovers()" style="font-size:.75rem;background:var(--color-price);color:#000;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;">⬇ PDF + Covers</button>
         </div>
     </div>
     <p class="subtitle">{{ records|length }} records</p>
-    <p id="gen-status" style="font-size:.75rem;color:#94a3b8;margin-bottom:8px;min-height:1rem"></p>
+    <p id="gen-status" style="font-size:.75rem;color:var(--text-secondary);margin-bottom:8px;min-height:1rem"></p>
 
     <div class="legend">
         <span><span class="dot dot-vinyl"></span>Vinyl</span>
