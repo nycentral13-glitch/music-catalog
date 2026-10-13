@@ -197,6 +197,9 @@
     </div><!-- end right-col -->
 </div>
 
+<!-- Apple Music inline embed player — shown/hidden by JS -->
+<div id="apple-music-player" class="mb-8" style="display:none"></div>
+
 <!-- Additional Info — condensed single line -->
 <div class="bg-slate-800 rounded-lg px-4 py-2 mb-8 text-xs text-slate-500 flex flex-wrap gap-x-4 gap-y-0.5 items-center justify-center">
     {% if record.upc %}<span><span class="uppercase tracking-wide">UPC </span><span class="font-mono text-slate-400">{{ record.upc }}</span></span>{% endif %}
@@ -241,6 +244,10 @@
     const priority = ['qobuz', 'apple_music', 'spotify'];
     const svcNames = { qobuz: 'Qobuz', apple_music: 'Apple Music', spotify: 'Spotify' };
 
+    function toEmbedUrl(url) {
+        return url.split('?')[0].replace('https://music.apple.com/', 'https://embed.music.apple.com/');
+    }
+
     fetch('/api/streaming/lookup/' + recordId)
         .then(r => r.json())
         .then(data => {
@@ -251,21 +258,57 @@
             }
             if (!bestSvc) return;
 
-            const others = Object.keys(svcs)
-                .filter(s => s !== bestSvc && svcs[s] && svcs[s].album_url)
-                .map(s => svcNames[s]).join(', ');
-
             const row = document.getElementById('streaming-row');
-            row.innerHTML = `
-                <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-raised);border-radius:8px;">
-                    <a href="${bestUrl}" target="_blank" rel="noopener noreferrer"
-                       style="display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;text-decoration:none;border-radius:6px;padding:6px 14px;font-size:0.82rem;font-weight:500;white-space:nowrap;">
-                        ▶ Play album
-                    </a>
-                    <span style="font-size:0.72rem;color:var(--text-muted);">
-                        via ${svcNames[bestSvc]}${others ? ' · also on ' + others : ''}
-                    </span>
-                </div>`;
+            const playerDiv = document.getElementById('apple-music-player');
+
+            if (bestSvc === 'apple_music') {
+                const embedUrl = toEmbedUrl(bestUrl);
+                let open = false;
+
+                row.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-raised);border-radius:8px;">
+                        <button id="play-toggle-btn"
+                            style="display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:0.82rem;font-weight:500;white-space:nowrap;cursor:pointer;">
+                            ▶ Play on Apple Music
+                        </button>
+                        <span style="font-size:0.72rem;color:var(--text-muted);">via Apple Music</span>
+                    </div>`;
+
+                document.getElementById('play-toggle-btn').addEventListener('click', function() {
+                    open = !open;
+                    if (open) {
+                        playerDiv.style.display = 'block';
+                        playerDiv.innerHTML = `<iframe
+                            allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write"
+                            frameborder="0" height="450"
+                            style="width:100%;border-radius:12px;"
+                            sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
+                            src="${embedUrl}"></iframe>`;
+                        this.textContent = '✕ Close Player';
+                        playerDiv.scrollIntoView({behavior: 'smooth', block: 'start'});
+                    } else {
+                        playerDiv.style.display = 'none';
+                        playerDiv.innerHTML = '';
+                        this.textContent = '▶ Play on Apple Music';
+                    }
+                });
+            } else {
+                // Non-Apple services: keep external link
+                const others = Object.keys(svcs)
+                    .filter(s => s !== bestSvc && svcs[s] && svcs[s].album_url)
+                    .map(s => svcNames[s]).join(', ');
+
+                row.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-raised);border-radius:8px;">
+                        <a href="${bestUrl}" target="_blank" rel="noopener noreferrer"
+                           style="display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;text-decoration:none;border-radius:6px;padding:6px 14px;font-size:0.82rem;font-weight:500;white-space:nowrap;">
+                            ▶ Play album
+                        </a>
+                        <span style="font-size:0.72rem;color:var(--text-muted);">
+                            via ${svcNames[bestSvc]}${others ? ' · also on ' + others : ''}
+                        </span>
+                    </div>`;
+            }
 
             // Per-track play buttons
             const trackUrls = (svcs[bestSvc] && svcs[bestSvc].track_urls) || {};
