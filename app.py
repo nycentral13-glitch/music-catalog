@@ -658,6 +658,80 @@ def api_record(record_id):
                         for t in tracks],
     })
 
+@app.route('/api/streaming/lookup/<int:record_id>')
+def api_streaming_lookup(record_id):
+    """Look up a record on enabled streaming services and return play URLs.
+    Uses cached results if checked within 30 days; otherwise fetches fresh."""
+    import urllib.request
+    import urllib.parse
+    import json as _json
+    from datetime import datetime, timedelta
+
+    record = database.get_record(record_id)
+    if not record:
+        return jsonify({'error': 'Not found'}), 404
+
+    # Check which services the user has enabled (default: apple_music on)
+    apple_enabled = database.get_setting('streaming_apple_music') != 'disabled'
+    if not apple_enabled:
+        return jsonify({'services': {}})
+
+    cached = database.get_streaming_links(record_id)
+    stale_cutoff = datetime.utcnow() - timedelta(days=30)
+
+    result = {}
+
+    # ── Apple Music via iTunes Search API (no auth required) ──
+    am_cache = cached.get('apple_music')
+    if am_cache and am_cache['checked_at']:
+        try:
+            checked = datetime.fromisoformat(am_cache['checked_at'])
+            if checked > stale_cutoff:
+                result['apple_music'] = am_cache
+                return jsonify({'services': result})
+        except ValueError:
+            pass
+
+    artist = (record['artist'] or '').strip()
+    title  = (record['title']  or '').strip()
+    if not artist or not title:
+        return jsonify({'services': result})
+
+    try:
+        query = urllib.parse.quote_plus(f'{artist} {title}')
+        url   = f'https://itunes.apple.com/search?term={query}&entity=album&limit=5&media=music'
+        req   = urllib.request.Request(url, headers={'User-Agent': 'VinylCatalog/1.0'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = _json.loads(resp.read().decode())
+
+        album_url = None
+        track_urls = {}
+
+        if data.get('results'):
+            # Pick best match: same artist + title (case-insensitive)
+            artist_l = artist.lower()
+            title_l  = title.lower()
+            for item in data['results']:
+                a = (item.get('artistName') or '').lower()
+                t = (item.get('collectionName') or '').lower()
+                if artist_l in a or a in artist_l:
+                    if title_l in t or t in title_l:
+                        album_url = item.get('collectionViewUrl')
+                        break
+            if not album_url and data['results']:
+                album_url = data['results'][0].get('collectionViewUrl')
+
+        database.save_streaming_links(record_id, 'apple_music', album_url, track_urls)
+
+        if album_url:
+            result['apple_music'] = {'album_url': album_url, 'track_urls': {}}
+
+    except Exception as e:
+        app.logger.warning(f'iTunes lookup failed for record {record_id}: {e}')
+
+    return jsonify({'services': result})
+
+
 @app.route('/record/<int:record_id>')
 def view_record(record_id):
     """View a single record"""

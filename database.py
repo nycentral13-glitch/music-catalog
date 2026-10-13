@@ -112,6 +112,18 @@ def init_db():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS streaming_links (
+            record_id   INTEGER NOT NULL,
+            service     TEXT NOT NULL,
+            album_url   TEXT,
+            track_urls  TEXT,
+            checked_at  TEXT,
+            PRIMARY KEY (record_id, service),
+            FOREIGN KEY (record_id) REFERENCES collection(id) ON DELETE CASCADE
+        )
+    ''')
+
     # Create indexes for common queries
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_artist ON collection(artist)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_title ON collection(title)')
@@ -792,5 +804,50 @@ def save_setting(key, value):
         'INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
         (key, value)
     )
+    conn.commit()
+    conn.close()
+
+def get_streaming_links(record_id):
+    """Return all cached streaming links for a record, keyed by service."""
+    import json
+    conn = get_db()
+    rows = conn.execute(
+        'SELECT service, album_url, track_urls, checked_at FROM streaming_links WHERE record_id = ?',
+        (record_id,)
+    ).fetchall()
+    conn.close()
+    result = {}
+    for row in rows:
+        result[row['service']] = {
+            'album_url':  row['album_url'],
+            'track_urls': json.loads(row['track_urls']) if row['track_urls'] else {},
+            'checked_at': row['checked_at'],
+        }
+    return result
+
+def save_streaming_links(record_id, service, album_url, track_urls):
+    """Cache streaming links for one service. track_urls is a dict {position: url}."""
+    import json
+    from datetime import datetime
+    conn = get_db()
+    conn.execute(
+        '''INSERT INTO streaming_links (record_id, service, album_url, track_urls, checked_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(record_id, service) DO UPDATE SET
+               album_url  = excluded.album_url,
+               track_urls = excluded.track_urls,
+               checked_at = excluded.checked_at''',
+        (record_id, service, album_url, json.dumps(track_urls), datetime.utcnow().isoformat())
+    )
+    conn.commit()
+    conn.close()
+
+def clear_streaming_links(record_id, service=None):
+    """Remove cached streaming links for a record (all services, or one specific service)."""
+    conn = get_db()
+    if service:
+        conn.execute('DELETE FROM streaming_links WHERE record_id = ? AND service = ?', (record_id, service))
+    else:
+        conn.execute('DELETE FROM streaming_links WHERE record_id = ?', (record_id,))
     conn.commit()
     conn.close()

@@ -748,6 +748,12 @@ initRecords();
 .rec-lb-loading { color: var(--text-muted-2); font-size: 0.8rem; padding: 8px 0; }
 #rec-lightbox { cursor: pointer; }
 #rec-lightbox-inner { cursor: default; }
+.rec-lb-play-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; background: var(--bg-raised); border-radius: 8px; }
+.rec-lb-play-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: #fff; text-decoration: none; border-radius: 6px; padding: 6px 14px; font-size: 0.82rem; font-weight: 500; white-space: nowrap; }
+.rec-lb-play-btn:hover { opacity: 0.85; }
+.rec-lb-play-info { font-size: 0.72rem; color: var(--text-muted); }
+.rec-lb-track-play { color: var(--text-muted); text-decoration: none; padding: 0 4px; font-size: 0.75rem; margin-left: 4px; }
+.rec-lb-track-play:hover { color: var(--accent); }
 </style>
 
 <!-- Record lightbox modal -->
@@ -760,6 +766,7 @@ initRecords();
       <div id="rec-lb-sort"></div>
       <div id="rec-lb-title"></div>
       <div class="rec-lb-row" id="rec-lb-badges"></div>
+      <div id="rec-lb-streaming"></div>
       <div id="rec-lb-tracks"></div>
     </div>
   </div>
@@ -794,10 +801,14 @@ function openRecordLightbox(card) {
     lb.classList.add('open');
     document.body.style.overflow = 'hidden';
 
-    // Fetch full details
-    fetch('/api/record/' + id)
-        .then(r => r.json())
-        .then(d => {
+    // Clear streaming row while loading
+    document.getElementById('rec-lb-streaming').innerHTML = '';
+
+    // Fetch full details and streaming in parallel
+    Promise.all([
+        fetch('/api/record/' + id).then(r => r.json()),
+        fetch('/api/streaming/lookup/' + id).then(r => r.json()).catch(() => ({ services: {} }))
+    ]).then(([d, streaming]) => {
             document.getElementById('rec-lb-artist').textContent = d.artist;
             document.getElementById('rec-lb-sort').textContent   = d.artist_sort && d.artist_sort !== d.artist ? 'Sort: ' + d.artist_sort : '';
             document.getElementById('rec-lb-title').textContent  = d.title + (d.year ? '  (' + d.year + ')' : '');
@@ -816,15 +827,41 @@ function openRecordLightbox(card) {
             }
             document.getElementById('rec-lb-badges').innerHTML = badges.join('');
 
+            // Streaming play row
+            const svcs = streaming.services || {};
+            const priority = ['qobuz', 'apple_music', 'spotify'];
+            const svcNames = { qobuz: 'Qobuz', apple_music: 'Apple Music', spotify: 'Spotify' };
+            let bestSvc = null, bestUrl = null;
+            for (const s of priority) {
+                if (svcs[s] && svcs[s].album_url) { bestSvc = s; bestUrl = svcs[s].album_url; break; }
+            }
+            const streamEl = document.getElementById('rec-lb-streaming');
+            if (bestSvc) {
+                const others = Object.keys(svcs).filter(s => s !== bestSvc && svcs[s].album_url)
+                                     .map(s => svcNames[s]).join(', ');
+                streamEl.innerHTML = `
+                    <div class="rec-lb-play-row">
+                        <a href="${bestUrl}" target="_blank" rel="noopener noreferrer" class="rec-lb-play-btn">
+                            ▶ Play album
+                        </a>
+                        <span class="rec-lb-play-info">via ${svcNames[bestSvc]}${others ? ' · also on ' + others : ''}</span>
+                    </div>`;
+            }
+
             // Tracks
             const tracksEl = document.getElementById('rec-lb-tracks');
             if (d.tracks && d.tracks.length > 0) {
                 let html = '<h4>Track Listing</h4>';
                 d.tracks.forEach(t => {
+                    const trackUrl = bestSvc && svcs[bestSvc].track_urls && svcs[bestSvc].track_urls[t.pos];
+                    const playBtn = trackUrl
+                        ? `<a href="${trackUrl}" target="_blank" rel="noopener noreferrer" class="rec-lb-track-play" title="Play on ${svcNames[bestSvc]}">▶</a>`
+                        : '';
                     html += `<div class="rec-lb-track">
                         <span class="pos">${t.pos || ''}</span>
                         <span>${t.title}${t.artist ? ' <span style="color:var(--text-muted-2)">— ' + t.artist + '</span>' : ''}</span>
                         ${t.duration ? '<span class="dur">' + t.duration + '</span>' : ''}
+                        ${playBtn}
                     </div>`;
                 });
                 tracksEl.innerHTML = html;
