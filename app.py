@@ -698,33 +698,58 @@ def api_streaming_lookup(record_id):
         return jsonify({'services': result})
 
     try:
+        # Step 1: search for the album to get collectionId
         query = urllib.parse.quote_plus(f'{artist} {title}')
         url   = f'https://itunes.apple.com/search?term={query}&entity=album&limit=5&media=music'
         req   = urllib.request.Request(url, headers={'User-Agent': 'VinylCatalog/1.0'})
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=8) as resp:
             data = _json.loads(resp.read().decode())
 
-        album_url = None
-        track_urls = {}
+        album_url     = None
+        collection_id = None
+        track_urls    = {}
 
         if data.get('results'):
-            # Pick best match: same artist + title (case-insensitive)
             artist_l = artist.lower()
             title_l  = title.lower()
+            best = None
             for item in data['results']:
                 a = (item.get('artistName') or '').lower()
                 t = (item.get('collectionName') or '').lower()
                 if artist_l in a or a in artist_l:
                     if title_l in t or t in title_l:
-                        album_url = item.get('collectionViewUrl')
+                        best = item
                         break
-            if not album_url and data['results']:
-                album_url = data['results'][0].get('collectionViewUrl')
+            if not best:
+                best = data['results'][0]
+            album_url     = best.get('collectionViewUrl')
+            collection_id = best.get('collectionId')
+
+        # Step 2: fetch all tracks for this album in one call
+        if collection_id:
+            track_url = f'https://itunes.apple.com/lookup?id={collection_id}&entity=song'
+            req2 = urllib.request.Request(track_url, headers={'User-Agent': 'VinylCatalog/1.0'})
+            with urllib.request.urlopen(req2, timeout=8) as resp2:
+                tdata = _json.loads(resp2.read().decode())
+
+            # Get stored track positions to map track number → position label
+            db_tracks = database.get_tracks(record_id)
+            # Build a list of track titles in order (skip headings)
+            db_track_list = [t for t in db_tracks if not t.get('is_heading')]
+
+            track_num = 0
+            for item in tdata.get('results', []):
+                if item.get('wrapperType') == 'track':
+                    track_view_url = item.get('trackViewUrl')
+                    if track_view_url and track_num < len(db_track_list):
+                        pos = db_track_list[track_num].get('position') or str(track_num + 1)
+                        track_urls[pos] = track_view_url
+                    track_num += 1
 
         database.save_streaming_links(record_id, 'apple_music', album_url, track_urls)
 
         if album_url:
-            result['apple_music'] = {'album_url': album_url, 'track_urls': {}}
+            result['apple_music'] = {'album_url': album_url, 'track_urls': track_urls}
 
     except Exception as e:
         app.logger.warning(f'iTunes lookup failed for record {record_id}: {e}')
