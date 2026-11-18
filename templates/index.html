@@ -173,7 +173,7 @@ function buildCard(r) {
         ? `<span class="text-xs text-green-500 font-mono">$${Math.round(r.price_lowest)}${r.price_highest && r.price_highest > 0 ? ' – $' + Math.round(r.price_highest) : ''}</span>`
         : '<span></span>';
 
-    const posHtml        = r.shelf_pos   ? `<span class="text-xs text-red-500 whitespace-nowrap">${esc(r.shelf_section)} #${r.shelf_pos}/${r.shelf_total}</span>` : '';
+    const posHtml        = r.shelf_pos   ? `<span class="text-xs text-red-500 whitespace-nowrap">${esc(r.shelf_section)} #${r.shelf_pos} of ${r.shelf_total}</span>` : '';
     const artistSortHtml = r.artist_sort ? `<p class="text-xs text-slate-600 truncate">${esc(r.artist_sort)}</p>` : '';
     const yearHtml       = r.year        ? `<p class="text-xs text-slate-500">${r.year}${r.format ? ' • ' + esc(r.format) : ''}</p>` : '';
 
