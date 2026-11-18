@@ -88,11 +88,6 @@
             {% if record.catalog_number %}
             <span><span class="text-slate-500 uppercase tracking-wide">Cat# </span>{{ record.catalog_number }}</span>
             {% endif %}
-            {% if record.shelf_section %}
-            <span>
-                <span class="text-slate-500 uppercase tracking-wide">Shelf </span>{{ record.shelf_section }}{% if shelf_position %} · #{{ shelf_position }}{% endif %}
-            </span>
-            {% endif %}
         </div>
 
         {% if record.artist_sort %}
@@ -114,17 +109,28 @@
         </div>
         {% endif %}
 
-        {% if record.price_updated %}
-        <div class="text-xs mb-0.5">
-            <span class="text-slate-500 uppercase tracking-wide">Market </span>
-            {% if record.price_lowest and record.price_lowest > 0 %}
-                <span class="text-green-400 font-medium">{{ record.price_currency }} {{ "%.2f"|format(record.price_lowest) }}</span>
-                <span class="text-slate-600 ml-1">low asking</span>
+        <div class="flex items-center justify-between text-xs mb-0.5">
+            {% if record.price_updated %}
+            <div>
+                <span class="text-slate-500 uppercase tracking-wide">Market </span>
+                {% if record.price_lowest and record.price_lowest > 0 %}
+                    <span class="text-green-400 font-medium">{{ record.price_currency }} {{ "%.2f"|format(record.price_lowest) }}</span>
+                    <span class="text-slate-600 ml-1">low asking</span>
+                {% else %}
+                    <span class="text-slate-600">No current listings</span>
+                {% endif %}
+            </div>
             {% else %}
-                <span class="text-slate-600">No current listings</span>
+            <div></div>
             {% endif %}
+            <div class="text-right">
+                {% if record.floor_storage %}
+                    <span class="text-slate-500 uppercase tracking-wide">Location </span><span class="text-slate-300">Floor Storage</span>
+                {% elif record.shelf_section %}
+                    <span class="text-slate-500 uppercase tracking-wide">Shelf </span><span class="text-slate-300">{{ record.shelf_section }}{% if shelf_position %} · #{{ shelf_position }}{% endif %}</span>
+                {% endif %}
+            </div>
         </div>
-        {% endif %}
 
         <!-- Divider -->
         <div class="border-t border-slate-600 mb-1.5 mt-0.5"></div>
