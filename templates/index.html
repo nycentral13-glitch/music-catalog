@@ -265,7 +265,7 @@ function renderShelfView() {
                         : (firstSort && lastSort && firstSort !== lastSort) ? ` (${firstSort} – ${lastSort})` :
                           firstSort ? ` (${firstSort})` : '';
 
-        const label = shelfNum === '999' ? 'Your Collection' :
+        const label = shelfNum === '999' ? 'Floor Storage' :
                       shelfNum === '14'  ? `Shelf 13 — Kids${rangeStr}` :
                       shelfNum === '15'  ? `Shelf 13 — Jazz${rangeStr}` :
                       shelfNum === '16'  ? `Shelf 13 — Classical${rangeStr}` :
