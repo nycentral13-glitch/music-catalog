@@ -822,7 +822,8 @@ def edit_record(record_id):
             'catalog_number': data.get('catalog_number'),
             'shelf_section': data.get('shelf_section'),
             'notes': data.get('notes'),
-            'needs_review': 1 if data.get('needs_review') else 0
+            'needs_review': 1 if data.get('needs_review') else 0,
+            'floor_storage': 1 if data.get('floor_storage') else 0
         }
 
         # Always save genre — text field is pre-filled so user controls it explicitly
@@ -1363,8 +1364,19 @@ def shelf_planner_records():
             'is_divider':  r['notes'] == 'alpha-divider',
             'weight':      r['weight'],
         })
+    # Floor storage records (excluded from shelves)
+    floor_rows = database.get_floor_storage_records()
+    floor_records = [{
+        'id':          r['id'],
+        'artist':      r['artist'] or '',
+        'artist_sort': r['artist_sort'] or r['artist'] or '',
+        'title':       r['title'] or '',
+        'format':      r['format'] or '',
+        'weight':      r['weight'],
+    } for r in floor_rows]
+
     saved_plan = database.get_shelf_plan()
-    return jsonify({'records': records, 'saved_plan': {str(k): v for k, v in saved_plan.items()}})
+    return jsonify({'records': records, 'floor_records': floor_records, 'saved_plan': {str(k): v for k, v in saved_plan.items()}})
 
 @app.route('/shelf-planner/save', methods=['POST'])
 def shelf_planner_save():

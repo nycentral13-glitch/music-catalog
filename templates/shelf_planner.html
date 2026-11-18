@@ -166,6 +166,12 @@ async function saveConfig() {
 <!-- Shelf table -->
 <div id="planner" class="hidden space-y-3"></div>
 
+<!-- Floor storage section -->
+<div id="floor-section" class="hidden mt-8">
+    <h2 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-3">🗃 Floor Storage</h2>
+    <div id="floor-list" class="space-y-1"></div>
+</div>
+
 <script>
 let allRecords = [];     // all rows from DB, in sort order
 let realRecords = [];    // non-divider records only, with cumulative unit index
@@ -204,6 +210,19 @@ async function loadRecords() {
 
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('planner').classList.remove('hidden');
+
+    // Render floor storage section
+    const floorRecords = data.floor_records || [];
+    if (floorRecords.length > 0) {
+        const floorList = document.getElementById('floor-list');
+        floorList.innerHTML = floorRecords.map(r =>
+            `<div class="flex items-center gap-3 px-3 py-1.5 bg-slate-800 rounded text-sm">
+                <span class="text-slate-400 font-mono text-xs w-16 shrink-0">${r.format}</span>
+                <span class="text-slate-200">${r.artist} — <span class="text-slate-400">${r.title}</span></span>
+            </div>`
+        ).join('');
+        document.getElementById('floor-section').classList.remove('hidden');
+    }
 
     // If we have a saved plan render it, otherwise auto-propose
     if (Object.keys(currentPlan).length === TARGET_SHELVES - 1) {

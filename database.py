@@ -84,6 +84,12 @@ def init_db():
     except Exception:
         pass  # Column already exists
 
+    # Migration: floor storage flag — excludes record from shelf layout
+    try:
+        cursor.execute('ALTER TABLE collection ADD COLUMN floor_storage INTEGER DEFAULT 0')
+    except Exception:
+        pass  # Column already exists
+
     # Migration: track when a record was last synced to Discogs collection
     try:
         cursor.execute('ALTER TABLE collection ADD COLUMN discogs_synced_at TEXT')
@@ -714,6 +720,7 @@ def get_shelf_planner_records():
                COALESCE(shelf_units, CASE format WHEN 'Double LP' THEN 2 WHEN 'Box Set' THEN 3 ELSE 1 END) as weight
         FROM collection
         WHERE duplicate_flag = 0
+          AND (floor_storage IS NULL OR floor_storage = 0)
           AND format IN ('LP','Double LP','12 Inch','EP','Box Set','45')
           AND (notes != 'alpha-divider' OR notes IS NULL)
           AND (genre IS NULL
@@ -723,6 +730,22 @@ def get_shelf_planner_records():
                AND LOWER(genre) NOT LIKE '%easy listening%'
                AND LOWER(genre) != 'other'))
         ORDER BY artist_sort ASC, year ASC, title ASC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def get_floor_storage_records():
+    """Return records marked as floor storage (excluded from shelf layout)."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, artist, artist_sort, title, format, shelf_section,
+               COALESCE(shelf_units, CASE format WHEN 'Double LP' THEN 2 WHEN 'Box Set' THEN 3 ELSE 1 END) as weight
+        FROM collection
+        WHERE floor_storage = 1
+          AND duplicate_flag = 0
+        ORDER BY artist_sort ASC, title ASC
     """)
     rows = cursor.fetchall()
     conn.close()

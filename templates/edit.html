@@ -111,6 +111,11 @@
                         {% if record.needs_review %}checked{% endif %}>
                     <span class="text-xs text-slate-400">Flag for review</span>
                 </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="floor_storage" class="w-4 h-4"
+                        {% if record.floor_storage %}checked{% endif %}>
+                    <span class="text-xs text-slate-400">Floor storage (exclude from shelf layout)</span>
+                </label>
                 <a href="{% if from_review %}{{ url_for('review') }}{% else %}{{ url_for('view_record', record_id=record.id) }}{% endif %}"
                    class="flex-1 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition font-medium text-center text-sm">
                     {% if from_review %}Skip{% else %}Cancel{% endif %}
