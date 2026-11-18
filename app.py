@@ -826,6 +826,10 @@ def edit_record(record_id):
             'floor_storage': 1 if data.get('floor_storage') else 0
         }
 
+        # Clear shelf_section when marked as floor storage
+        if update_data['floor_storage']:
+            update_data['shelf_section'] = None
+
         # Always save genre — text field is pre-filled so user controls it explicitly
         update_data['genre'] = data.get('genre', '').strip() or None
 
